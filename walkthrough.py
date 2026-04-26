@@ -394,7 +394,9 @@ def _decomp_equation(mo):
     between $\lambda(t)$ and the conditional gradient that disappears
     whenever the posterior $p(t \mid \mathbf{u})$ concentrates on a single
     noise level, and the <span style="color:#D95F02">Linear Drift</span>
-    is a radial term that absorbs the schedule's expanding noise volume.
+    is the residual radial component left over after the energy-aligned
+    terms have been factored out, given by
+    $\overline{c}_{\mathrm{scale}}(\mathbf{u}) = \mathbb{E}_{t|\mathbf{u}}[c(t)/a(t)]$.
     The figure that follows plots each of the three components separately
     on the same 2D grid, with colors matched to the equation above.
     """)
@@ -496,12 +498,13 @@ def _conformal_md(mo):
 
     $$\lim_{\mathbf{u} \to \mathbf{x}_k} \|\nabla E_{\mathrm{marg}}(\mathbf{u})\| = \infty.$$
 
-    The autonomous field, by contrast, remains bounded throughout the
-    domain, including arbitrarily close to a sample. The reason is that
-    the effective gain $\overline{\lambda}(\mathbf{u})$, which sits in
-    front of the Natural Gradient term, vanishes at the same asymptotic
-    rate as the gradient diverges. The product of the two is therefore
-    bounded even though either factor on its own is not, and the field
+    The Natural Gradient term of the field, by contrast, remains
+    bounded throughout the domain, including arbitrarily close to a
+    sample. The reason is that the effective gain
+    $\overline{\lambda}(\mathbf{u})$, which sits in front of the Natural
+    Gradient, vanishes at the same asymptotic rate as the gradient
+    diverges. The product of the two is therefore bounded even though
+    either factor on its own is not, and the velocity-target field
     behaves as if it were following a Riemannian gradient flow whose
     metric is supplied by the geometry of the data. The figure that
     follows renders the cancellation directly, by plotting each of the
