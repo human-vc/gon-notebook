@@ -3,9 +3,7 @@
 # dependencies = [
 #     "marimo",
 #     "numpy",
-#     "torch",
 #     "matplotlib",
-#     "scikit-learn",
 # ]
 # ///
 """Why Autonomous Diffusion Really Works.

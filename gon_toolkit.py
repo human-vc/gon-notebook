@@ -1,12 +1,35 @@
-"""GoN toolkit — closed-form fields, parameterizations, samplers, learned-alpha,
-   curl, Wasserstein-2 — for the marimo notebook on arXiv:2602.18428.
+"""GoN toolkit, closed-form fields, parameterizations, samplers,
+learned-alpha, curl, Wasserstein-2, for the marimo notebook on
+arXiv:2602.18428.
 """
 
 from __future__ import annotations
 
 import numpy as np
-import torch
-import torch.nn as nn
+
+try:
+    import torch
+    import torch.nn as nn
+    _HAS_TORCH = True
+except ImportError:
+    torch = None
+    nn = None
+    _HAS_TORCH = False
+
+
+def _require_torch():
+    if not _HAS_TORCH:
+        raise ImportError(
+            "this function requires torch; install with "
+            "`uv pip install torch`. The notebook itself doesn't need "
+            "torch since it loads pre-computed .npz results."
+        )
+
+
+def _no_grad_decorator(fn):
+    if _HAS_TORCH:
+        return torch.no_grad()(fn)
+    return fn
 
 STABLE = "#009688"
 UNSTABLE = "#F5A623"
@@ -214,20 +237,22 @@ def jensen_gap_grid(X, t_grid, sched_fn=fm_schedule, t_eval=0.05, lim=1.5, n=40)
             gap[j, i] = dist * prefactor * jensen
     return XX, YY, gap
 
-class TinyMLP(nn.Module):
-    def __init__(self, dim_in=2, dim_out=2, hidden=64, depth=3):
-        super().__init__()
-        layers = [nn.Linear(dim_in, hidden), nn.SiLU()]
-        for _ in range(depth - 1):
-            layers += [nn.Linear(hidden, hidden), nn.SiLU()]
-        layers += [nn.Linear(hidden, dim_out)]
-        self.net = nn.Sequential(*layers)
+if _HAS_TORCH:
+    class TinyMLP(nn.Module):
+        def __init__(self, dim_in=2, dim_out=2, hidden=64, depth=3):
+            super().__init__()
+            layers = [nn.Linear(dim_in, hidden), nn.SiLU()]
+            for _ in range(depth - 1):
+                layers += [nn.Linear(hidden, hidden), nn.SiLU()]
+            layers += [nn.Linear(hidden, dim_out)]
+            self.net = nn.Sequential(*layers)
 
-    def forward(self, x):
-        return self.net(x)
+        def forward(self, x):
+            return self.net(x)
 
 def train_param(X, alpha=0.0, dim=None, steps=2000, batch=64, lr=3e-4, seed=0,
                 hidden=128, depth=3):
+    _require_torch()
     torch.manual_seed(seed)
     dim = dim or X.shape[1]
     Xd = project_up(X, dim, seed=seed) if dim != X.shape[1] else X
@@ -251,6 +276,7 @@ def train_param(X, alpha=0.0, dim=None, steps=2000, batch=64, lr=3e-4, seed=0,
     return model, losses
 
 def train_eqm(X, dim=None, steps=2000, batch=64, lr=3e-4, seed=0):
+    _require_torch()
     torch.manual_seed(seed)
     dim = dim or X.shape[1]
     Xd = project_up(X, dim, seed=seed) if dim != X.shape[1] else X
@@ -271,28 +297,26 @@ def train_eqm(X, dim=None, steps=2000, batch=64, lr=3e-4, seed=0):
             losses.append(loss.item())
     return model, losses
 
-class AlphaMLP(nn.Module):
-    """Outputs (predicted target, alpha(x,t)) — alpha bounded to [0, 1]."""
+if _HAS_TORCH:
+    class AlphaMLP(nn.Module):
+        """Outputs (predicted target, alpha(x,t)), alpha bounded to [0, 1]."""
 
-    def __init__(self, dim=2, hidden=64):
-        super().__init__()
-        self.shared = nn.Sequential(
-            nn.Linear(dim + 1, hidden), nn.SiLU(),
-            nn.Linear(hidden, hidden), nn.SiLU(),
-        )
-        self.target_head = nn.Linear(hidden, dim)
-        self.alpha_head = nn.Sequential(nn.Linear(hidden, 1), nn.Sigmoid())
+        def __init__(self, dim=2, hidden=64):
+            super().__init__()
+            self.shared = nn.Sequential(
+                nn.Linear(dim + 1, hidden), nn.SiLU(),
+                nn.Linear(hidden, hidden), nn.SiLU(),
+            )
+            self.target_head = nn.Linear(hidden, dim)
+            self.alpha_head = nn.Sequential(nn.Linear(hidden, 1), nn.Sigmoid())
 
-    def forward(self, u, t):
-        h = self.shared(torch.cat([u, t], dim=-1))
-        return self.target_head(h), self.alpha_head(h)
+        def forward(self, u, t):
+            h = self.shared(torch.cat([u, t], dim=-1))
+            return self.target_head(h), self.alpha_head(h)
 
 def train_alpha_mulan(X, dim=2, steps=3000, batch=64, lr=3e-4, eta_reg=2.0, seed=0):
-    """Train learned-alpha(x,t) with a ν(t) regularizer.
-
-    The paper's noise-prediction effective gain is ν(t) = ḃ(t)/b(t) ~ 1/t for FM.
-    Penalty:  eta_reg * alpha^2 * (1/b(t)^2)  pushes alpha→0 (velocity) where unstable.
-    """
+    """Train learned-alpha(x,t) with a ν(t) regularizer."""
+    _require_torch()
     torch.manual_seed(seed)
     Xd = project_up(X, dim, seed=seed) if dim != X.shape[1] else X
     Xd_t = torch.from_numpy(Xd)
@@ -317,7 +341,7 @@ def train_alpha_mulan(X, dim=2, steps=3000, batch=64, lr=3e-4, eta_reg=2.0, seed
             losses_reg.append(nu_reg.item())
     return model, losses_mse, losses_reg
 
-@torch.no_grad()
+@_no_grad_decorator
 def sample_ode(model, n=500, dim=2, n_steps=200, sigma_init=1.5, seed=0):
     """Euler ODE: dx/dt = -v(x). Integrate t: 1 → 0."""
     torch.manual_seed(seed)
@@ -329,7 +353,7 @@ def sample_ode(model, n=500, dim=2, n_steps=200, sigma_init=1.5, seed=0):
         x = x + dt * v
     return x.numpy()
 
-@torch.no_grad()
+@_no_grad_decorator
 def sample_sde(model, n=500, dim=2, n_steps=200, sigma_init=1.5,
                noise_scale=0.5, seed=0):
     """Euler-Maruyama: dx = -v(x) dt + sigma(t) sqrt(|dt|) dW."""
@@ -343,7 +367,7 @@ def sample_sde(model, n=500, dim=2, n_steps=200, sigma_init=1.5,
         x = x + dt * v + sigma * np.sqrt(abs(dt)) * torch.randn_like(x)
     return x.numpy()
 
-@torch.no_grad()
+@_no_grad_decorator
 def sample_langevin(model, n=500, dim=2, n_steps=400, sigma_init=1.5,
                     step_size=0.005, seed=0):
     """Annealed Langevin on the trained field treated as score-like."""
