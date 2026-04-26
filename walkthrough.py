@@ -112,7 +112,7 @@ def _hero_field(D_hero, G, X_hero, np, seed_hero, t_grid_hero):
     return UV_h, XX_h, YY_h
 
 @app.cell
-def _hero_plot(STABLE, UV_h, XX_h, X_hero, YY_h, np, plt):
+def _hero_plot(STABLE, UV_h, XX_h, X_hero, YY_h, mo, np, plt):
     def _draw():
 
         fig, ax = plt.subplots(figsize=(14, 4.7), constrained_layout=True)
@@ -133,7 +133,7 @@ def _hero_plot(STABLE, UV_h, XX_h, X_hero, YY_h, np, plt):
             s.set_color("#d0d0d0")
             s.set_linewidth(0.8)
         return fig
-    _draw()
+    mo.center(_draw())
     return
 
 @app.cell
@@ -312,7 +312,7 @@ def _closed_form_field(G, np):
     return X, XX_cf, YY_cf, field_cf, t_grid
 
 @app.cell
-def _closed_form_plot(STABLE, X, XX_cf, YY_cf, field_cf, np, plt):
+def _closed_form_plot(STABLE, X, XX_cf, YY_cf, field_cf, mo, np, plt):
     def _draw():
         fig, ax = plt.subplots(figsize=(5.4, 5.4), constrained_layout=True)
         u, v = field_cf[..., 0], field_cf[..., 1]
@@ -327,7 +327,7 @@ def _closed_form_plot(STABLE, X, XX_cf, YY_cf, field_cf, np, plt):
         ax.set_xlim(-1.5, 1.5); ax.set_ylim(-1.5, 1.5)
         ax.set_xticks([]); ax.set_yticks([])
         return fig
-    _draw()
+    mo.center(_draw())
     return
 
 @app.cell
@@ -395,6 +395,7 @@ def _decomp_plot(
     XX_d,
     YY_d,
     drift,
+    mo,
     natural,
     np,
     plt,
@@ -422,7 +423,7 @@ def _decomp_plot(
             ax.set_xlim(-1.5, 1.5); ax.set_ylim(-1.5, 1.5)
             ax.set_xticks([]); ax.set_yticks([])
         return fig
-    _draw()
+    mo.center(_draw())
     return
 
 @app.cell
@@ -488,7 +489,7 @@ def _conformal_compute(G, X, t_grid):
     return grad_norm, lam_bar, product
 
 @app.cell
-def _conformal_plot(STABLE, UNSTABLE, X, grad_norm, lam_bar, np, plt, product):
+def _conformal_plot(STABLE, UNSTABLE, X, grad_norm, lam_bar, mo, np, plt, product):
     def _draw():
         fig, axes = plt.subplots(1, 3, figsize=(13.5, 4.5),
                                   sharex=True, sharey=True, constrained_layout=True)
@@ -511,7 +512,7 @@ def _conformal_plot(STABLE, UNSTABLE, X, grad_norm, lam_bar, np, plt, product):
             ax.set_xticks([]); ax.set_yticks([])
             fig.colorbar(im, ax=ax, shrink=0.7, pad=0.02)
         return fig
-    _draw()
+    mo.center(_draw())
     return
 
 @app.cell
@@ -589,7 +590,7 @@ def _field_D_data(G, X, np, t_grid):
     return (panel_results,)
 
 @app.cell
-def _field_D_plot(STABLE, X, np, panel_results, plt):
+def _field_D_plot(STABLE, X, mo, np, panel_results, plt):
     def _draw():
         fig, axes = plt.subplots(1, 4, figsize=(15, 4),
                                   sharex=True, sharey=True, constrained_layout=True)
@@ -607,7 +608,7 @@ def _field_D_plot(STABLE, X, np, panel_results, plt):
             ax.set_xlim(-1.5, 1.5); ax.set_ylim(-1.5, 1.5)
             ax.set_xticks([]); ax.set_yticks([])
         return fig
-    _draw()
+    mo.center(_draw())
     return
 
 @app.cell
@@ -706,6 +707,7 @@ def _phase_plot(
     alpha_phase,
     corner_scatters,
     corner_w2,
+    mo,
     np,
     plt,
     truth_2d,
@@ -844,7 +846,7 @@ def _phase_plot(
                 (letter, x_inset + inset_w / 2, y_inset + inset_h + 0.085))
 
         return fig
-    _draw()
+    mo.center(_draw())
     return
 
 @app.cell
@@ -927,7 +929,7 @@ def _jensen_compute(G, X, np):
     return (jensen_panels,)
 
 @app.cell
-def _jensen_plot(X, jensen_panels, np, plt):
+def _jensen_plot(X, jensen_panels, mo, np, plt):
     def _draw():
         vmax_j = max(np.percentile(g, 98) for _, _, _, g in jensen_panels)
         fig, axes = plt.subplots(1, 3, figsize=(13, 4.3),
@@ -944,7 +946,7 @@ def _jensen_plot(X, jensen_panels, np, plt):
                              label=r"$\Delta v_{\mathrm{noise}}$ (Jensen Gap)")
         cbar.outline.set_visible(False)
         return fig
-    _draw()
+    mo.center(_draw())
     return
 
 @app.cell
@@ -995,7 +997,7 @@ def _gallery_load(gon_data, np):
     return D_gal, alpha_gal, grids_gal
 
 @app.cell
-def _gallery_plot(D_gal, alpha_gal, grids_gal, plt):
+def _gallery_plot(D_gal, alpha_gal, grids_gal, mo, plt):
     def _draw():
 
         fig, axes = plt.subplots(1, 3, figsize=(13.5, 4.2),
@@ -1030,7 +1032,7 @@ def _gallery_plot(D_gal, alpha_gal, grids_gal, plt):
             if ax is axes[0]:
                 ax.set_ylabel(r"$W_2$ to ground truth")
         return fig
-    _draw()
+    mo.center(_draw())
     return
 
 @app.cell
@@ -1119,6 +1121,7 @@ def _collapse_plot(
     alpha_poly,
     coll_X,
     config_select,
+    mo,
     plt,
 ):
     def _draw():
@@ -1163,7 +1166,7 @@ def _collapse_plot(
                                    r"(0 = velocity, 1 = noise pred.)")
         cbar.outline.set_visible(False)
         return fig
-    _draw()
+    mo.center(_draw())
     return
 
 @app.cell
