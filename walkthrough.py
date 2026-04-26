@@ -1144,7 +1144,7 @@ def _collapse_plot(
         ]
         bins = np.linspace(0.0, 1.0, 41)
 
-        fig, axes = plt.subplots(1, 4, figsize=(7.4, 2.0),
+        fig, axes = plt.subplots(1, 4, figsize=(7.4, 2.4),
                                   sharex=True, sharey=True)
 
         n_total = alpha_naive.size
@@ -1152,15 +1152,16 @@ def _collapse_plot(
             ax.hist(A.ravel(), bins=bins,
                     color=STABLE, alpha=0.85,
                     edgecolor="white", linewidth=0.4)
-            ax.set_title(name, fontsize=9.5, color="#111",
-                         pad=4, loc="left")
-            ax.text(0.97, 0.92,
-                    fr"$\bar{{\alpha}}={A.mean():.3f}$"
-                    "\n"
-                    fr"$\sigma={A.std():.3f}$",
+            ax.text(0.0, 1.20, name,
                     transform=ax.transAxes,
-                    ha="right", va="top",
-                    fontsize=8.5, color="#333")
+                    ha="left", va="bottom",
+                    fontsize=9.5, color="#111")
+            ax.text(0.0, 1.04,
+                    fr"$\bar{{\alpha}}={A.mean():.3f}$"
+                    fr"   $\sigma={A.std():.3f}$",
+                    transform=ax.transAxes,
+                    ha="left", va="bottom",
+                    fontsize=8.5, color="#666")
             ax.set_xticks([0.0, 0.5, 1.0])
             ax.set_yticks([])
             ax.set_ylim(0, n_total)
@@ -1171,9 +1172,9 @@ def _collapse_plot(
             ax.tick_params(direction="out", length=3, width=0.6,
                            labelsize=8.5, colors="#333")
 
-        fig.supxlabel(r"$\alpha$", fontsize=10, y=0.02)
-        fig.subplots_adjust(left=0.04, right=0.99, top=0.84,
-                             bottom=0.22, wspace=0.12)
+        fig.supxlabel(r"$\alpha$", fontsize=10, y=0.04)
+        fig.subplots_adjust(left=0.04, right=0.99, top=0.78,
+                             bottom=0.22, wspace=0.18)
         return fig
     mo.center(_draw())
     return
