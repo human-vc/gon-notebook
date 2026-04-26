@@ -764,11 +764,12 @@ def _phase_plot(
             ax.scatter([a_inside], [y_inside], s=12, facecolor="black",
                         zorder=11)
             ax.text(lx, ly, letter,
-                    fontsize=13, fontweight="bold", color="#222",
+                    fontsize=13, fontweight="bold", color="#111",
                     ha=ha_, va=va_, zorder=12,
-                    bbox=dict(boxstyle="round,pad=0.18",
-                              facecolor="white", edgecolor="none",
-                              alpha=0.85))
+                    path_effects=[
+                        patheffects.Stroke(linewidth=3, foreground="white"),
+                        patheffects.Normal(),
+                    ])
             callout_dot_positions.append((letter, a_inside, y_inside))
 
         bx = fig.add_axes([0.61, 0.42, 0.36, 0.53])
@@ -847,18 +848,9 @@ def _phase_plot(
     return
 
 @app.cell
-def _phase_slider_display(D_select, mo):
+def _phase_slider_display(D_select):
 
-    mo.vstack([
-        D_select,
-        mo.md(
-            "<div style='color:#777; font-size:0.85rem;'>"
-            "Selecting an ambient dimension highlights the corresponding "
-            "row of the heatmap as a curve on the right, and the same "
-            "value is underlined on the colormap on the left."
-            "</div>"
-        ),
-    ], gap=0.3)
+    D_select
     return
 
 @app.cell
@@ -1175,19 +1167,9 @@ def _collapse_plot(
     return
 
 @app.cell
-def _collapse_select_display(config_select, mo):
+def _collapse_select_display(config_select):
 
-    mo.vstack([
-        config_select,
-        mo.md(
-            "<div style='color:#777; font-size:0.85rem;'>"
-            "The first three options are the realized $\\alpha(\\mathbf{u}, t)$ "
-            "fields produced by three different training schemes, and the "
-            "fourth shows the kind of spatial variation one would have "
-            "wanted to see."
-            "</div>"
-        ),
-    ], gap=0.3)
+    config_select
     return
 
 @app.cell
