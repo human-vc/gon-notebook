@@ -262,14 +262,15 @@ def _first_steps_md(mo):
 
 @app.cell
 def _table1(mo):
-    mo.md(r"""
+    table = mo.md(r"""
     | Model | $a(t)$ | $b(t)$ | $c(t)$ | $d(t)$ | What it predicts |
     |---|---|---|---|---|---|
     | **DDPM** | $\sqrt{\bar{\alpha}_t}$ | $\sqrt{1-\bar{\alpha}_t}$ | 0 | 1 | noise $\boldsymbol{\varepsilon}$ |
     | **EDM** | 1 | $\sigma_t$ | 1 | 0 | data $\mathbf{x}$ |
     | **Flow Matching** | $1-t$ | $t$ | $-1$ | $1$ | velocity $\boldsymbol{\varepsilon} - \mathbf{x}$ |
     | **Equilibrium Matching** | $1-t$ | $t$ | $-t$ | $t$ | $\mathbf{u} - \mathbf{x}$ |
-
+    """)
+    prose = mo.md(r"""
     The Flow Matching schedule is used throughout. The fact on which
     everything that follows depends is Lemma 1 of the paper, which states
     that an autonomous model, one without access to $t$, minimizes its MSE
@@ -282,6 +283,7 @@ def _table1(mo):
     $p(t \mid \mathbf{u})$ over noise levels consistent with the
     observation $\mathbf{u}$.
     """)
+    mo.vstack([mo.center(table), prose], gap=1.0)
     return
 
 @app.cell
