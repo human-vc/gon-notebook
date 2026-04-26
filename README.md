@@ -9,7 +9,7 @@ The notebook renders the paper's central claim — that autonomous diffusion fie
 In molab (browser, no install):
 
 ```
-https://molab.marimo.io/github/<user>/gon-notebook/blob/main/walkthrough.py/wasm
+https://molab.marimo.io/github/human-vc/gon-notebook/blob/main/walkthrough.py/wasm
 ```
 
 Locally:
