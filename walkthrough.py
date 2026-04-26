@@ -159,11 +159,15 @@ def _hero_row(D_hero, mo, seed_hero):
     ], gap=0.3)
     col_prose = mo.md(
         r"""
-        We often think of diffusion models as needing to know **how much**
-        noise was added. But recent autonomous models throw away the time
-        conditioning entirely — and they still work. A single static field,
-        with no clock, guides samples from pure noise to clean data. *What
-        is going on?*
+        The standard view of a diffusion model is that the network needs to
+        know how much noise has been added before it can decide which way
+        to point. Recent autonomous models drop that information entirely:
+        the network sees only the noisy observation and produces a single
+        static vector field, and yet samples drawn through that field
+        arrive at the clean data. The figure shows one such field on a 2D
+        dataset of two interleaving rings, lifted into $\mathbb{R}^D$ by a
+        random orthogonal projection. Vary the dimension below to see how
+        the field responds.
         """
     )
     mo.hstack([col_slider1, col_slider2, col_prose],
@@ -173,49 +177,59 @@ def _hero_row(D_hero, mo, seed_hero):
 @app.cell
 def _popular_story(mo):
     mo.md(r"""
-    Here's the popular story about diffusion. A network learns to denoise data
-    at every noise level. To denoise an image, you tell the network *how much*
-    noise was added, the time $t$, and it predicts the noise. To generate,
-    you start from pure noise and call the network at decreasing $t$ until an
-    image emerges.
-
-    This story isn't wrong. But it has a paradox at its center.
+    The standard account of a diffusion model goes as follows. A network is
+    trained to remove noise from data across a continuum of noise levels,
+    and at inference it is told the current level $t$ so that it knows
+    which scale of structure it should be uncovering at each step.
+    Generation begins from pure Gaussian noise and proceeds by repeated
+    application of the network at gradually decreasing values of $t$, with
+    the sample sharpening a little more each time, until what remains looks
+    like a draw from the data distribution. The account is accurate, and
+    almost every modern diffusion system can be described this way. The
+    puzzle is that several recent models manage to do without it.
     """)
     return
 
 @app.cell
 def _the_break(mo):
     mo.md(r"""
-    **Recent autonomous models throw away the time conditioning entirely.** No
-    $t$-embedding, no schedule input. The network sees only the noisy
-    observation $\mathbf{u}$ and predicts a target. Equilibrium Matching
-    [[Wang & Du, 2025](https://arxiv.org/abs/2510.02300)] does this. So does
-    blind Flow Matching [[Sun et al., 2025](https://arxiv.org/abs/2502.13129)].
-    And they *work*.
-
-    How? The "right" gradient to follow from a point $\mathbf{u}$ should depend
-    heavily on its noise level. How can a single static field guide a sample
-    from pure noise (high $t$) and also guide a sample from light noise (low
-    $t$), all while ensuring its stationary points sit on the clean data?
+    A handful of recent models remove the time input entirely. They see
+    only the noisy observation $\mathbf{u}$ and emit a target vector, with
+    no embedding for $t$ and no schedule channel of any kind. Equilibrium
+    Matching [[Wang & Du, 2025](https://arxiv.org/abs/2510.02300)] is one
+    such model, and blind Flow Matching
+    [[Sun et al., 2025](https://arxiv.org/abs/2502.13129)] is another. Both
+    produce samples that closely match the data distribution despite having
+    no way to distinguish a heavily corrupted input from a lightly
+    corrupted one. The behavior is unexpected, because the direction of
+    steepest descent at $\mathbf{u}$ ought to depend strongly on how much
+    noise it carries: the same arrow asked to do the work at every noise
+    level should not be enough, and yet it apparently is.
     """)
     return
 
 @app.cell
 def _the_promise(mo):
     mo.md(r"""
-    *The Geometry of Noise* resolves the paradox geometrically. The
-    autonomous field isn't merely "blind denoising" — it implicitly performs
-    **Riemannian gradient flow on a marginal energy landscape**. The landscape
-    has an infinitely deep singularity at the data manifold. But the learned
-    field carries a local conformal metric — the paper's *effective gain* —
-    that vanishes at exactly the rate the gradient diverges. Their product
-    stays bounded. The geometry hands us a free Riemannian preconditioner.
+    The recent paper *The Geometry of Noise* resolves the puzzle by
+    recasting autonomous diffusion as Riemannian gradient flow on a
+    marginal energy landscape. The landscape itself is badly behaved: the
+    energy diverges at the data manifold, so the gradient one would
+    naively follow grows without bound near a clean sample. The autonomous
+    field, however, carries an implicit local metric, which the paper
+    calls the effective gain, that contracts at the same rate the gradient
+    explodes, so that their product remains finite. The metric is supplied
+    by the geometry of the data rather than learned, which is the reason a
+    network with no time input is still able to behave reasonably across
+    noise levels.
 
-    We're going to make that abstract claim concrete by studying autonomous
-    diffusion on the simplest model where we can write the answer down
-    exactly: a 2D dataset of points, embedded into $\mathbb{R}^D$. This
-    setting is rich enough to reproduce every parameterization the paper
-    analyzes, yet simple enough to render every quantity by hand.
+    The remainder of this notebook works through the claim on the smallest
+    model that exhibits all of the relevant behavior: a finite collection
+    of points in two dimensions, optionally lifted into $\mathbb{R}^D$ by
+    a random orthogonal projection. The setting is rich enough to support
+    every parameterization the paper analyzes, and small enough that the
+    optimal field can be written down in closed form and every relevant
+    quantity plotted by hand.
     """)
     return
 
@@ -224,20 +238,22 @@ def _first_steps_md(mo):
     mo.md(r"""
     ## First Steps: The Closed-Form Optimal Field
 
-    We begin by writing the autonomous diffusion problem in the simplest form
-    that captures every parameterization at once. The forward process
-    corrupts a clean point $\mathbf{x}$ with Gaussian noise
-    $\boldsymbol{\varepsilon} \sim \mathcal{N}(0, I)$ — but the rate, the
-    scaling, and the velocity all live inside a single affine schedule:
+    A natural starting point is to write the forward and reverse processes
+    in the most general affine form, since this absorbs every
+    parameterization the paper considers into a single set of coefficients.
+    A clean point $\mathbf{x}$ is corrupted with Gaussian noise
+    $\boldsymbol{\varepsilon} \sim \mathcal{N}(0, I)$ according to
 
-    $$\mathbf{u}_t = a(t)\,\mathbf{x} + b(t)\,\boldsymbol{\varepsilon}.$$
+    $$\mathbf{u}_t = a(t)\,\mathbf{x} + b(t)\,\boldsymbol{\varepsilon},$$
 
-    A network $f$ predicts a linear target
-    $r(\mathbf{x}, \boldsymbol{\varepsilon}, t) = c(t)\,\mathbf{x} + d(t)\,\boldsymbol{\varepsilon}$.
-    The four schedule functions $(a, b, c, d)$ are rich enough to recover
-    DDPM, EDM, Flow Matching, and Equilibrium Matching as special cases [Sun
-    et al., 2025], yet simple enough to let us write the optimal autonomous
-    field down in closed form.
+    so the schedule is described by two functions $a(t)$ and $b(t)$. The
+    network is asked to predict a linear combination of the same two
+    ingredients, $r(\mathbf{x}, \boldsymbol{\varepsilon}, t) = c(t)\,\mathbf{x} + d(t)\,\boldsymbol{\varepsilon}$,
+    and the choice of the four functions $(a, b, c, d)$ is enough to
+    reproduce DDPM, EDM, Flow Matching, and Equilibrium Matching as
+    particular cases [Sun et al., 2025]. Within this framework, the
+    optimal autonomous field admits a closed-form expression, which the
+    rest of the section makes explicit.
     """)
     return
 
@@ -251,31 +267,37 @@ def _table1(mo):
     | **Flow Matching** | $1-t$ | $t$ | $-1$ | $1$ | velocity $\boldsymbol{\varepsilon} - \mathbf{x}$ |
     | **Equilibrium Matching** | $1-t$ | $t$ | $-t$ | $t$ | $\mathbf{u} - \mathbf{x}$ |
 
-    We use the Flow Matching schedule throughout. The key fact: an autonomous
-    model, one without access to $t$, minimizes its MSE loss when its output
-    is the *posterior expectation* of the target (Lemma 1 of the paper):
+    The Flow Matching schedule is used throughout. The fact on which
+    everything that follows depends is Lemma 1 of the paper, which states
+    that an autonomous model, one without access to $t$, minimizes its MSE
+    loss when its output equals the posterior expectation of the target:
 
     $$f^*(\mathbf{u}) = \mathbb{E}_{t \mid \mathbf{u}} \big[ f^*_t(\mathbf{u}) \big].$$
 
-    The optimal noise-blind model is a time-average of the optimal
-    time-conditional one, weighted by the posterior $p(t \mid \mathbf{u})$.
+    The optimal noise-blind model is therefore a time-average of the
+    optimal time-conditional one, weighted by the posterior
+    $p(t \mid \mathbf{u})$ over noise levels consistent with the
+    observation $\mathbf{u}$.
     """)
     return
 
 @app.cell
 def _trick_md(mo):
     mo.md(r"""
-    Here's the trick that makes everything visualizable. When the data is a
-    finite set of points $\{\mathbf{x}_k\}_{k=1}^N$, both the conditional
-    denoiser and the posterior $p(t \mid \mathbf{u})$ collapse to closed-form
-    sums over data points (Appendix A.3, Eq 35-36):
+    When the data distribution is supported on a finite set of points
+    $\{\mathbf{x}_k\}_{k=1}^N$, both the conditional denoiser and the
+    posterior $p(t \mid \mathbf{u})$ reduce to closed-form sums over the
+    data, as derived in Appendix A.3 of the paper (Eq 35–36):
 
     $$D^*_t(\mathbf{u}) = \sum_{k=1}^N w_k(\mathbf{u}, t)\,\mathbf{x}_k, \qquad w_k(\mathbf{u}, t) = \frac{\exp(-\|\mathbf{u}-a(t)\mathbf{x}_k\|^2 / 2b(t)^2)}{\sum_j \exp(-\|\mathbf{u}-a(t)\mathbf{x}_j\|^2 / 2b(t)^2)}.$$
 
-    This is the Boltzmann-softmax barycenter of the data, weighted by Gaussian
-    likelihood. Plug it into the autonomous formula and we get $f^*(\mathbf{u})$
-    exactly — no training, no SGD, no architecture choices. Most of this
-    notebook runs on this analytical anchor.
+    The conditional denoiser is therefore a softmax-weighted barycenter of
+    the data points, with each weight given by a Gaussian likelihood.
+    Substituting this expression into the autonomous formula above yields
+    $f^*(\mathbf{u})$ exactly, so the optimal field on a finite dataset can
+    be evaluated without training a network. Almost every figure in the
+    sections that follow is computed in this way, and the few that involve
+    trained networks are clearly indicated.
     """)
     return
 
@@ -308,14 +330,15 @@ def _closed_form_plot(STABLE, X, XX_cf, YY_cf, field_cf, np, plt):
 @app.cell
 def _closed_form_caption(mo):
     mo.md(r"""
-    **The optimal autonomous field $f^*(\mathbf{u})$ on a 2D dataset of 120
-    points (two concentric rings).** Every arrow is a sum of softmax-weighted
-    contributions from the data, integrated against the implicit posterior
-    $p(t \mid \mathbf{u})$. No network was trained. The field bends gracefully
-    toward the manifold from far away and squeezes through the gap between the
-    rings near the origin.
-
-    Now we ask: *what is this field doing, geometrically?*
+    The figure above shows the optimal autonomous field $f^*(\mathbf{u})$
+    for a dataset consisting of 120 points distributed on two concentric
+    rings. Each arrow is a softmax-weighted average of contributions from
+    the data points, integrated against the implicit posterior over noise
+    levels, and was obtained directly from the closed-form expression
+    rather than learned. The field points inward toward the manifold from
+    a distance and threads through the gap between the rings near the
+    origin. The natural next step is to ask what it is doing in geometric
+    terms.
     """)
     return
 
@@ -324,9 +347,11 @@ def _decomp_md(mo):
     mo.md(r"""
     ## Decomposing the Field
 
-    For *any* affine schedule, the optimal autonomous field $f^*(\mathbf{u})$
-    decomposes into exactly three geometric components (Eq 14 of the paper,
-    derived in Appendix D):
+    For an arbitrary affine schedule, the optimal autonomous field
+    $f^*(\mathbf{u})$ admits a decomposition into three geometric
+    components. The decomposition is Eq 14 of the paper, derived in
+    Appendix D, and isolates the three distinct mechanisms by which the
+    field acts on $\mathbf{u}$:
     """)
     return
 
@@ -336,16 +361,18 @@ def _decomp_equation(mo):
     mo.md(r"""
     $$f^*(\mathbf{u}) = \underbrace{\textcolor{#1B9E77}{\overline{\lambda}(\mathbf{u})\,\nabla E_{\mathrm{marg}}(\mathbf{u})}}_{\text{Natural Gradient}} + \underbrace{\textcolor{#7570B3}{\mathbb{E}_{t|\mathbf{u}}\big[(\lambda(t) - \overline{\lambda}(\mathbf{u}))(\nabla E_t(\mathbf{u}) - \nabla E_{\mathrm{marg}}(\mathbf{u}))\big]}}_{\text{Transport Correction}} + \underbrace{\textcolor{#D95F02}{\overline{c}_{\mathrm{scale}}(\mathbf{u}) \cdot \mathbf{u}}}_{\text{Linear Drift}}.$$
 
-    The <span style="color:#1B9E77">**Natural Gradient**</span> term pulls
-    toward the manifold along the steepest descent direction of the marginal
-    energy $E_{\mathrm{marg}}(\mathbf{u}) = -\log p(\mathbf{u})$ — but it's
-    preconditioned by the *effective gain* $\overline{\lambda}(\mathbf{u})$.
-    The <span style="color:#7570B3">**Transport Correction**</span> is a
-    covariance term that vanishes when the posterior $p(t \mid \mathbf{u})$
-    concentrates. The <span style="color:#D95F02">**Linear Drift**</span>
-    is a radial scaling that handles the schedule's expanding noise volume.
-
-    We render each piece separately on the 2D grid below.
+    The first term, the <span style="color:#1B9E77">Natural Gradient</span>,
+    is the direction of steepest descent on the marginal energy
+    $E_{\mathrm{marg}}(\mathbf{u}) = -\log p(\mathbf{u})$, scaled by the
+    effective gain $\overline{\lambda}(\mathbf{u})$ that acts as a local
+    preconditioner. The
+    <span style="color:#7570B3">Transport Correction</span> is a covariance
+    between $\lambda(t)$ and the conditional gradient that disappears
+    whenever the posterior $p(t \mid \mathbf{u})$ concentrates on a single
+    noise level, and the <span style="color:#D95F02">Linear Drift</span>
+    is a radial term that absorbs the schedule's expanding noise volume.
+    The figure that follows plots each of the three components separately
+    on the same 2D grid, with colors matched to the equation above.
     """)
     return
 
@@ -398,24 +425,29 @@ def _decomp_plot(
 @app.cell
 def _decomp_caption(mo):
     mo.md(r"""
-    Each color matches the equation above. Notice the
-    <span style="color:#009688">Natural Gradient</span> already does most of
-    the work — it points toward the data. The
-    <span style="color:#542788">Transport Correction</span> is a small
-    rotational nudge, largest in the *gap* between the rings where the
-    posterior over noise levels is genuinely ambiguous. The
-    <span style="color:#F5A623">Linear Drift</span> is a radial term that
-    grows with $\|\mathbf{u}\|$.
+    The three panels correspond to the three terms of the decomposition.
+    The Natural Gradient already accomplishes most of the work the field
+    does, since it points consistently toward the data from every position
+    in the plane. The Transport Correction adds a small rotational
+    adjustment that is largest in the gap between the rings, which is the
+    region where the posterior over noise levels is genuinely uncertain.
+    The Linear Drift contributes a radial term whose magnitude grows with
+    $\|\mathbf{u}\|$.
 
-    The paper proves the Transport Correction vanishes in two regimes: high
-    ambient dimension (Sec 5.2 — the "blessings of dimensionality") and
-    proximity to the manifold (Sec 5.3). When transport vanishes, the field
-    simplifies to a pure preconditioned natural gradient. **This is the
-    Riemannian gradient flow.**
+    Two regimes are identified in the paper in which the Transport
+    Correction vanishes. The first is high ambient dimension (Sec 5.2),
+    where the surface area of a Gaussian noise shell concentrates and the
+    posterior over noise levels collapses onto a narrow band of $t$. The
+    second is proximity to the manifold (Sec 5.3), where the same
+    posterior collapses for a different reason. In either regime the field
+    reduces to a preconditioned natural gradient, which is precisely the
+    form a Riemannian gradient flow would take.
 
-    And there we have it — the autonomous field in three pieces. But there's
-    a problem. $\nabla E_{\mathrm{marg}}$ is supposed to *blow up* at the
-    manifold. How is the field still well-behaved?
+    One question, however, remains. The marginal-energy gradient
+    $\nabla E_{\mathrm{marg}}$ is unbounded near the manifold, since the
+    energy itself diverges there, and yet the autonomous field is finite
+    everywhere. The next section explains how the cancellation that keeps
+    the field bounded actually works.
     """)
     return
 
@@ -425,21 +457,22 @@ def _conformal_md(mo):
     ## The Conformal Metric
 
     The marginal energy $E_{\mathrm{marg}}(\mathbf{u}) = -\log p(\mathbf{u})$
-    has an infinitely deep well at the data manifold (Eq 12, paper Fig 1).
-    Its gradient diverges:
+    has an infinitely deep well at the data manifold (Eq 12 of the paper,
+    Fig 1), and its gradient diverges as $\mathbf{u}$ approaches any data
+    point:
 
     $$\lim_{\mathbf{u} \to \mathbf{x}_k} \|\nabla E_{\mathrm{marg}}(\mathbf{u})\| = \infty.$$
 
-    And yet the autonomous field stays bounded. What gives?
-
-    The effective gain $\overline{\lambda}(\mathbf{u})$ — the preconditioner
-    in front of the Natural Gradient term — vanishes at *exactly the rate*
-    the gradient diverges. Their product is bounded. The field implicitly
-    carries a local Riemannian metric, computed by the geometry of the data
-    itself, that converts an infinitely steep potential well into a stable
-    attractor.
-
-    Here is that statement, rendered.
+    The autonomous field, by contrast, remains bounded throughout the
+    domain, including arbitrarily close to a sample. The reason is that
+    the effective gain $\overline{\lambda}(\mathbf{u})$, which sits in
+    front of the Natural Gradient term, vanishes at the same asymptotic
+    rate as the gradient diverges. The product of the two is therefore
+    bounded even though either factor on its own is not, and the field
+    behaves as if it were following a Riemannian gradient flow whose
+    metric is supplied by the geometry of the data. The figure that
+    follows renders the cancellation directly, by plotting each of the
+    two factors and their product on the same domain.
     """)
     return
 
@@ -481,44 +514,52 @@ def _conformal_plot(STABLE, UNSTABLE, X, grad_norm, lam_bar, np, plt, product):
 @app.cell
 def _conformal_caption(mo):
     mo.md(r"""
-    Read these three panels left-to-right.
+    The three panels show, from left to right, the marginal-energy
+    gradient, the effective gain $\overline{\lambda}(\mathbf{u})$, and the
+    pointwise product of the two. The leftmost panel makes the divergence
+    visible: the gradient magnitude grows without bound at the dark data
+    points, so any method that follows it directly is unstable in
+    precisely the regions where one would most want it to be stable. The
+    middle panel shows the effective gain (Eq 15 of the paper), which
+    goes to zero at exactly the same locations. The asymptotic rates are
+    shown in Appendix E to match, and the rightmost panel confirms the
+    matching pictorially: the product of the two factors is finite
+    everywhere, no singularity remains, and the field is well-defined on
+    the entire domain.
 
-    - <span style="color:#F5A623">**Left.**</span> The raw marginal-energy
-      gradient. As you approach a data point (the dark dots), the magnitude
-      explodes. Plain gradient descent on this landscape is doomed.
-    - <span style="color:#009688">**Center.**</span> The effective gain
-      $\overline{\lambda}(\mathbf{u})$ — paper Eq 15. It *vanishes* exactly
-      where the gradient diverges, with the right asymptotic rate (Appendix
-      E).
-    - **Right.** The product. **Bounded.** No singularity. This is the
-      Riemannian preconditioning that the paper proves and we now see.
-
-    This is the central reveal of the paper, made visible. A free Riemannian
-    preconditioner, courtesy of the geometry. Everything that follows —
-    phase diagrams, parameterization choices, failure modes — is about
-    *where this cancellation works* and *where it stops working*.
-
-    But there's more. The cancellation depends on the *posterior* over noise
-    levels, $p(t \mid \mathbf{u})$, and that posterior changes with the
-    ambient dimension $D$. The field should look very different at $D = 2$
-    than at $D = 128$.
+    The central claim of the paper is captured by this figure. The
+    Riemannian metric required to keep the gradient flow stable does not
+    have to be designed or learned, since it is already present in the
+    conditional denoiser; the conformal cancellation is a property of the
+    geometry rather than of any particular network. The remaining
+    sections work out the conditions under which the cancellation
+    continues to hold and the conditions under which it begins to fail.
+    The first such condition is dimensional, since the cancellation
+    depends on the posterior $p(t \mid \mathbf{u})$ and the shape of that
+    posterior changes substantially with the ambient dimension $D$.
     """)
     return
 
 @app.cell
 def _field_D_md(mo):
     mo.md(r"""
-    ## Example: The Field Across Ambient Dimensions
+    ## The Field Across Ambient Dimensions
 
-    The conformal-metric story has a knob: ambient dimension. The paper proves
-    (Sec 5.2, Lemma 5) that the Transport Correction term *vanishes* as $D$
-    grows, because the noise-shell concentrates in $\mathbb{R}^D$. So the
-    field should look messier at low $D$, cleaner at high $D$ — settling into
-    pure radial flow toward the manifold.
+    The conformal-metric argument has a free parameter, namely the ambient
+    dimension into which the data is embedded. Lemma 5 of the paper
+    (Sec 5.2) proves that the Transport Correction vanishes as $D$ grows,
+    because the surface area of a Gaussian noise shell in $\mathbb{R}^D$
+    concentrates more and more tightly with increasing dimension and the
+    posterior $p(t \mid \mathbf{u})$ becomes nearly deterministic. The
+    autonomous field at low $D$ should therefore appear noisier near the
+    manifold, while the field at high $D$ should reduce to a clean radial
+    flow toward the data.
 
-    Here is the closed-form $f^*(\mathbf{u})$ at four ambient dimensions, all
-    rendered in the original 2D data plane (we project up via a random
-    orthogonal $P$, evaluate, project back).
+    The figure below shows the closed-form $f^*(\mathbf{u})$ at four
+    ambient dimensions, all visualized in the original 2D plane. Each
+    panel is computed by sampling a random orthogonal map, embedding the
+    data into $\mathbb{R}^D$ through it, evaluating the field there, and
+    projecting the result back to two dimensions for display.
     """)
     return
 
@@ -569,14 +610,17 @@ def _field_D_plot(STABLE, X, np, panel_results, plt):
 @app.cell
 def _field_D_caption(mo):
     mo.md(r"""
-    Read left to right. At $D=2$ the field is messy near the manifold —
-    the Transport Correction is large, the posterior $p(t \mid \mathbf{u})$
-    is genuinely ambiguous. At $D=128$, every arrow points cleanly inward;
-    the noise shell has concentrated, the correction has vanished, and the
-    field is *pure radial flow* on the marginal energy. The geometry of
-    high-dimensional Gaussians does the work.
-
-    The "blessings of dimensionality", made visual.
+    The four panels record the same field at four different ambient
+    dimensions. At $D = 2$ the field is visibly disordered near the
+    manifold, since the Transport Correction is large there and the
+    posterior over noise levels is genuinely ambiguous because no
+    concentration effect has yet kicked in. At $D = 128$ every arrow
+    points cleanly inward, the correction term has shrunk to nothing, and
+    the field reduces to the radial gradient flow predicted by the
+    conformal-metric argument. The phenomenon, often called the blessing
+    of dimensionality, is operating here in its purest form, and is
+    responsible for much of the empirical success of high-dimensional
+    diffusion.
     """)
     return
 
@@ -585,24 +629,32 @@ def _alpha_md(mo):
     mo.md(r"""
     ## A Continuous Family of Parameterizations
 
-    So far we've worked with one target: the velocity prediction
-    $\mathbf{v} = \boldsymbol{\varepsilon} - \mathbf{x}$. The paper analyzes
-    three discrete choices — noise prediction ($\boldsymbol{\varepsilon}$),
-    velocity ($\mathbf{v}$), and signal prediction ($\mathbf{x}$) — and
-    classifies them by Table 2: which give bounded gain, which give bounded
-    drift, which are stable. But the choice doesn't have to be discrete.
+    Up to this point every figure has been computed for the velocity
+    target $\mathbf{v} = \boldsymbol{\varepsilon} - \mathbf{x}$. The paper
+    considers three particular targets in detail, namely noise prediction,
+    velocity, and signal prediction, and classifies each according to
+    whether its gain and drift terms are bounded and whether the
+    resulting flow is stable. There is no reason, however, to restrict
+    attention to those three points, and a continuous family interpolating
+    between two of them can be defined as
 
-    Define a one-parameter family interpolating between noise and velocity:
+    $$\text{target}(\alpha) = \alpha\,\boldsymbol{\varepsilon} + (1 - \alpha)\,\mathbf{v}, \qquad \alpha \in [0, 1],$$
 
-    $$\text{target}(\alpha) = \alpha\,\boldsymbol{\varepsilon} + (1 - \alpha)\,\mathbf{v}, \qquad \alpha \in [0, 1].$$
+    with $\alpha = 0$ recovering velocity prediction and $\alpha = 1$
+    recovering noise prediction. Sweeping $\alpha$ continuously turns the
+    binary classification of the paper into a smoothly varying landscape
+    on which one can ask not only which targets work but how the quality
+    of the resulting flow varies between them.
 
-    $\alpha = 0$ is velocity. $\alpha = 1$ is noise prediction. What lies in
-    between?
-
-    We trained a small MLP at every cell of the grid $\alpha \in \{0, 0.25,
-    0.5, 0.75, 1\} \times D \in \{2, 4, 8, 16, 32, 64\}$, sampled 400 points
-    via Euler ODE, and measured sliced Wasserstein-2 distance to the ground
-    truth. Each cell of the heatmap below is one trained network.
+    To populate this landscape, a small MLP was trained at every cell of
+    the grid $\alpha \in \{0, 0.25, 0.5, 0.75, 1\}$ paired with
+    $D \in \{2, 4, 8, 16, 32, 64\}$. Each network was trained on the same
+    dataset of two concentric rings, samples were drawn from each by
+    Euler integration of the ODE, and the sliced Wasserstein-2 distance
+    from the samples to a fresh ground-truth set was recorded. Every cell
+    of the heatmap below is the output of one such trained network, and
+    the slider beneath it allows the row corresponding to a specific
+    ambient dimension to be highlighted on the right-hand panel.
     """)
     return
 
@@ -803,37 +855,46 @@ def _phase_plot(
     return
 
 @app.cell
-def _phase_slider_display(D_select):
+def _phase_slider_display(D_select, mo):
 
-    D_select
+    mo.vstack([
+        D_select,
+        mo.md(
+            "<div style='color:#777; font-size:0.85rem;'>"
+            "Selecting an ambient dimension highlights the corresponding "
+            "row of the heatmap as a curve on the right, and the same "
+            "value is underlined on the colormap on the left."
+            "</div>"
+        ),
+    ], gap=0.3)
     return
 
 @app.cell
 def _phase_caption(mo):
     mo.md(r"""
-    Read it like a weather map. **Lighter colors are better** (lower $W_2$
-    to ground truth); darker is worse. Drag the slider above to pick a
-    different $D$ — the right panel shows that row of the heatmap as a curve,
-    with the chosen $D$ bolded. Each labeled corner has a matching
-    sample-scatter panel below.
+    The horizontal axis sweeps the parameter $\alpha$ from velocity
+    prediction on the left to noise prediction on the right, the vertical
+    axis is the ambient dimension on a log scale, and the color encodes
+    the sliced Wasserstein-2 distance from the trained model's samples to
+    the ground-truth set, with lighter shades indicating better fits.
+    Dragging the slider selects a row of the heatmap, which is reproduced
+    as a line plot on the right with the chosen dimension highlighted.
+    Four particular configurations, marked A through D, are reproduced as
+    scatter plots at the bottom so that the same data can be inspected
+    directly.
 
-    - <span style="color:#009688">**A** ($\alpha = 0$, $D = 2$):</span>
-      velocity at low dim. The conformal metric does its full work: tight
-      rings, $W_2 \approx 0.10$.
-    - <span style="color:#F5A623">**B** ($\alpha = 1$, $D = 2$):</span>
-      noise prediction at low dim. Diffuse cloud, $W_2 \approx 0.20$.
-      *Twice as bad* — same compute, same data, just a different target.
-    - <span style="color:#009688">**C**</span> and
-      <span style="color:#F5A623">**D**</span>
-      ($D = 32$): every parameterization wins. The shell of noise has
-      concentrated to a Dirac delta in the posterior, the Transport
-      Correction has vanished, and the field is pure radial flow no matter
-      what target you train on.
-
-    The paper's binary table (Sec 6) said "noise prediction fails
-    autonomously." The continuous picture is sharper: noise prediction
-    fails *worst at low $D$*, and the failure fades smoothly as $D$ grows.
-    The cancellation works wherever it can.
+    The qualitative shape of the landscape is straightforward. At
+    $D = 2$, configuration A (velocity) recovers the rings tightly with
+    $W_2 \approx 0.10$, while configuration B (noise prediction) collapses
+    to a diffuse cloud at $W_2 \approx 0.20$, roughly twice as far from
+    the ground truth despite identical compute and identical data. At
+    $D = 32$, both configurations C and D succeed, since at high enough
+    dimension the posterior over noise levels concentrates and the
+    distinction between targets disappears. The heatmap interpolates
+    smoothly between these regimes, sharpening the binary statement of
+    the paper into a quantitative one: noise prediction does not fail
+    uniformly but rather fails most acutely at low ambient dimension,
+    with the gap between targets closing gradually as $D$ rises.
     """)
     return
 
@@ -842,22 +903,26 @@ def _jensen_md(mo):
     mo.md(r"""
     ## The Limits of the Cancellation
 
-    The conformal metric gives the autonomous field a free preconditioner —
-    *for the velocity target*. For the noise target, the paper proves
-    (Eq 66, Appendix F.2) that an extra error term appears, called the
-    **Jensen Gap**:
+    The cancellation between $\overline{\lambda}$ and
+    $\nabla E_{\mathrm{marg}}$ described above is exact for the velocity
+    target, but it does not hold for the noise target. The paper shows in
+    Eq 66 (Appendix F.2) that the autonomous error for noise prediction
+    picks up an additional contribution, which the authors name the
+    Jensen Gap:
 
     $$\Delta v_{\text{noise}} \propto \|\mathbf{u} - \mathbf{x}^*\| \cdot \left|\frac{b'(t)}{b(t)}\right| \cdot \left|b(t)\,\mathbb{E}_{\tau \mid \mathbf{u}}[1/b(\tau)] - 1\right|.$$
 
-    The middle factor is harmless. The outer factors are the problem: as
-    $t \to 0$, $b(t) \to 0$, so $b'(t)/b(t) \to \infty$. And the posterior
-    $p(\tau \mid \mathbf{u})$ is broad enough that
-    $\mathbb{E}_{\tau \mid \mathbf{u}}[1/b(\tau)]$ doesn't equal $1/b(t)$
-    by Jensen's inequality. The gap explodes precisely where you most want
-    the field to be precise: near the data.
-
-    The paper introduces this quantity, names it, and never plots it. We do.
-    Three heatmaps, at increasingly low $t$, make the divergence visible.
+    The middle factor is benign, and the trouble lies in the two outer
+    factors. Under the Flow Matching schedule, $b(t)$ approaches zero as
+    $t \to 0$, so the ratio $b'(t)/b(t)$ grows without bound. The third
+    factor is a Jensen-inequality residual that would vanish if the
+    posterior over $\tau$ were a Dirac delta and is otherwise positive,
+    with the residual growing as the posterior broadens. Because both
+    factors are largest precisely near the manifold and at small $t$, the
+    noise target carries an irreducible error in the regime where one
+    would most want the field to be accurate. The paper introduces this
+    quantity but does not plot it, so the three heatmaps below display
+    its magnitude on the same domain as before, at three values of $t$.
     """)
     return
 
@@ -897,31 +962,35 @@ def _jensen_plot(X, jensen_panels, np, plt):
 @app.cell
 def _jensen_caption(mo):
     mo.md(r"""
-    At $t = 0.60$, with comfortably high noise, the Jensen Gap is small
-    everywhere. At $t = 0.20$ it grows, especially near the data manifold.
-    At $t = 0.05$, near clean data, the gap **explodes** near the
-    rings. Every cyan dot is sitting in a thunderstorm of error.
-
-    And we arrive at the disappointing conclusion that for the noise target,
-    this gift comes at a cost: the Jensen Gap dominates the loss precisely
-    where the field needs to be most accurate.
+    At $t = 0.60$, where the noise level is large, the Jensen Gap is
+    uniformly small across the domain. At $t = 0.20$ the gap has grown,
+    with the increase concentrated near the data manifold. At $t = 0.05$,
+    almost on clean data, the gap is large in a thin annulus surrounding
+    every data point and small everywhere else. The annulus is the region
+    where the residual factor and the diverging $b'(t)/b(t)$ multiply, and
+    the cyan markers indicating data points sit at its center. The figure
+    therefore shows in concrete terms what Eq 66 expresses analytically,
+    and it explains why the noise target fails in the autonomous setting:
+    the parameterization is most inaccurate in exactly the region where
+    one would most need it to be accurate.
     """)
     return
 
 @app.cell
 def _gallery_md(mo):
     mo.md(r"""
-    ## Example: Moons, Mixtures, and a Swiss Roll
+    ## Moons, Mixtures, and a Swiss Roll
 
-    Concentric circles are a clean toy. Real manifolds aren't. We re-ran
-    the $(\alpha, D)$ phase diagram on three more 2D datasets:
-
-    - **Moons** — smooth, semicircular, two components.
-    - **8-GMM ring** — eight discrete modes around a ring.
-    - **Swiss roll** — a curved, single-component manifold.
-
-    Every cell in the grid below is a freshly trained network on that
-    dataset's $(\alpha, D)$ configuration.
+    The dataset of two concentric rings used so far is a deliberately
+    simple test case, and one might worry that the shape of the phase
+    diagram is determined more by its geometry than by anything general.
+    To check, the same procedure was repeated on three further 2D
+    datasets: a pair of interleaving moons, an eight-component Gaussian
+    mixture arranged in a ring, and a curved swiss-roll manifold. Each
+    cell of the figure below is a separate MLP, trained from scratch on
+    the indicated dataset and the indicated $(\alpha, D)$ configuration,
+    with the resulting Wasserstein distance plotted as a function of
+    $\alpha$ for each ambient dimension.
     """)
     return
 
@@ -979,30 +1048,44 @@ def _gallery_plot(D_gal, alpha_gal, grids_gal, plt):
 @app.cell
 def _gallery_caption(mo):
     mo.md(r"""
-    The same shape in all three. At $D = 2$, velocity beats noise prediction
-    by a factor of 2× to 3.5×. At $D = 32$, the row flattens — every
-    parameterization wins. Swiss roll has the steepest gradient, exactly
-    as the curvature argument predicts: a curved manifold breaks the
-    posterior concentration faster.
-
-    The conformal-metric story is geometry, not a property of circles.
+    The three panels exhibit the same qualitative pattern. At $D = 2$,
+    the velocity target is between two and three-and-a-half times closer
+    to the ground truth than the noise target, with the precise gap
+    depending on the dataset. At $D = 32$, the curves are essentially
+    flat in $\alpha$, indicating that any parameterization works as well
+    as any other once the posterior over noise levels has concentrated.
+    The swiss roll exhibits the steepest dependence on $\alpha$,
+    consistent with the curvature argument in the paper: a manifold with
+    non-trivial curvature breaks the posterior concentration earlier than
+    a flat one. Across all three datasets the conformal-metric account is
+    reproduced, and the cancellation, where it works, is shown to be a
+    consequence of geometry rather than of any specific feature of the
+    concentric-rings dataset.
     """)
     return
 
 @app.cell
 def _collapse_md(mo):
     mo.md(r"""
-    ## There's One More Question Worth Asking
+    ## A Tempting Generalization
 
-    The phase diagram tells us velocity wins low-$D$ and noise wins
-    (eventually) nowhere. Surely, then, the *right* thing to do is let the
-    network choose its own $\alpha$ per point. Train an MLP that outputs both
-    the target prediction and a learned
-    $\alpha(\mathbf{x}, t) \in [0, 1]$, with the same MSE flavor:
+    If the velocity target is best at low $D$ and the noise target offers
+    no advantage anywhere, a natural next step is to let the network
+    decide for itself which target to use at each point. One way to
+    formalize this is to train an MLP whose output consists not only of
+    a target prediction but also a per-point parameter
+    $\alpha(\mathbf{x}, t) \in [0, 1]$, with the loss given by the same
+    MSE form as before, evaluated at whichever target $\alpha$ specifies:
 
     $$\mathcal{L} = \mathbb{E}\big\|f_\theta(\mathbf{u}) - [\alpha_\theta(\mathbf{u}, t)\boldsymbol{\varepsilon} + (1 - \alpha_\theta(\mathbf{u}, t))\mathbf{v}]\big\|^2.$$
 
-    The network would surely find the good parameterization at every point.
+    One would expect the network to converge on a spatially varying
+    $\alpha$, choosing values close to zero near the manifold, where
+    noise prediction fails, and tolerating values close to one elsewhere,
+    where any parameterization works. The dropdown beneath the figure
+    selects between three actual training runs and one hypothetical
+    ideal, allowing the realized $\alpha(\mathbf{u}, t)$ field to be
+    inspected directly.
     """)
     return
 
@@ -1097,36 +1180,47 @@ def _collapse_plot(
     return
 
 @app.cell
-def _collapse_select_display(config_select):
+def _collapse_select_display(config_select, mo):
 
-    config_select
+    mo.vstack([
+        config_select,
+        mo.md(
+            "<div style='color:#777; font-size:0.85rem;'>"
+            "The first three options are the realized $\\alpha(\\mathbf{u}, t)$ "
+            "fields produced by three different training schemes, and the "
+            "fourth shows the kind of spatial variation one would have "
+            "wanted to see."
+            "</div>"
+        ),
+    ], gap=0.3)
     return
 
 @app.cell
 def _collapse_caption(mo):
     mo.md(r"""
-    All three configurations **collapse** to a constant $\alpha$ across the
-    entire input space.
+    Each of the three trained configurations converges to a value of
+    $\alpha$ that is approximately constant across the entire input
+    space. The naive MSE objective drives $\alpha$ to one and recovers
+    noise prediction, which the previous sections established as the
+    worse of the two endpoints. Adding a $\nu(t)$ regularizer drives
+    $\alpha$ to zero and recovers velocity, but this is not a victory in
+    any meaningful sense, since a constant $\alpha = 0$ is precisely
+    what one would have written down by hand without the network. The
+    structural polynomial-in-$t$ parameterization, which imposes the sign
+    constraints used by MuLAN, also collapses to noise prediction.
 
-    - <span style="color:#F5A623">**Naive MSE**</span> →
-      $\alpha \to 1$ (the *unstable* parameterization).
-    - <span style="color:#009688">**$\nu(t)$-regularized**</span> →
-      $\alpha \to 0$ (stable, but trivial — the regularizer trades one
-      collapse for the other).
-    - <span style="color:#F5A623">**Polynomial in $t$ with sign
-      constraints**</span> (MuLAN-style structural prior) →
-      $\alpha \to 1$ again.
-
-    The MSE objective alone is degenerate: the loss landscape is flat in
-    $\alpha$ once the prediction matches its target. Spatial variation in
-    $\alpha$ is not free — it requires a *structural* anchor that the loss
-    cannot smooth away. MuLAN's variational ELBO gives one. Plain
-    regularizers do not.
-
-    A negative result, honestly framed, is still a finding. **The
-    conformal-metric optimum exists in the loss landscape; gradient descent
-    on MSE cannot find it.** A beautiful trap — laid by the loss landscape
-    itself.
+    The reason the network cannot learn a useful spatially varying
+    $\alpha$ is that the MSE objective with a free $\alpha$ is degenerate.
+    Any value of $\alpha$ achieves the optimum as long as $f_\theta$
+    matches whichever target $\alpha$ has selected, and the set of
+    zero-loss configurations forms a flat ridge along which gradient
+    descent can drift indefinitely. Recovering the conformal-metric
+    optimum from this loss landscape requires a structural anchor that
+    MSE alone cannot supply. The variational ELBO of MuLAN supplies one,
+    while a $\nu(t)$ regularizer added on top of MSE does not. The
+    conclusion is that the optimum exists in the function space available
+    to the network, but the loss landscape on which gradient descent has
+    been asked to find it does not select for it.
     """)
     return
 
@@ -1139,52 +1233,56 @@ def _footnotes(mo):
     mo.accordion({
         "**1.  Closed-form $f^*(\\mathbf{u})$ on discrete data (Appendix A.3)**":
             mo.md(r"""
-            For a finite dataset $\{\mathbf{x}_k\}_{k=1}^K$, the conditional
-            optimal target collapses to a softmax-weighted sum:
+            For a finite dataset $\{\mathbf{x}_k\}_{k=1}^K$, the
+            conditional optimal target reduces to a softmax-weighted sum:
 
             $$D^*_t(\mathbf{u}) = \sum_k w_k(\mathbf{u}, t)\, \mathbf{x}_k, \qquad w_k(\mathbf{u}, t) \propto \exp\!\Big(\!-\tfrac{1}{2 b(t)^2}\,\|\mathbf{u} - a(t)\mathbf{x}_k\|^2\Big).$$
 
-            The autonomous optimum then averages over the implicit posterior
-            $p(t \mid \mathbf{u}) \propto \int p(\mathbf{u}, t)\, dt$, which
-            is itself a discrete sum. Both pieces are renderable on a 2D
-            grid in milliseconds. This is the analytical anchor of the
-            entire notebook — every figure that doesn't say "trained" is
-            just $K$-by-$T$ matrix arithmetic.
+            The autonomous optimum is obtained by averaging this expression
+            over the implicit posterior
+            $p(t \mid \mathbf{u}) \propto \int p(\mathbf{u}, t)\, dt$,
+            which is itself a discrete sum. Both pieces evaluate on a 2D
+            grid in milliseconds, and every figure in the notebook that
+            does not explicitly involve a trained network is computed by
+            $K$-by-$T$ matrix arithmetic of this form.
             """),
 
         "**2.  The Jensen Gap (Appendix F.2, Eq 66)**":
             mo.md(r"""
             For a noise-prediction parameterization, the autonomous error
             against the true velocity field decomposes into a Natural
-            Gradient piece (which the conformal metric cancels) plus an
-            extra term:
+            Gradient piece, which the conformal metric cancels, together
+            with an additional term:
 
             $$\Delta v_{\text{noise}}(\mathbf{u}) = \big\|\mathbf{u} - \mathbf{x}^*\big\| \cdot \left|\frac{b'(t)}{b(t)}\right| \cdot \Big| b(t) \cdot \mathbb{E}_{\tau \mid \mathbf{u}}\!\big[1/b(\tau)\big] - 1 \Big|.$$
 
-            The third factor is a Jensen-inequality residual: it would be
-            zero if the posterior over $\tau$ were a Dirac. Since
+            The third factor is a Jensen-inequality residual that would be
+            zero if the posterior over $\tau$ were a Dirac delta. Since
             $1/b(\tau)$ is convex and the posterior is broad, the residual
-            is positive — and the prefactor $|b'(t)/b(t)|$ blows up as
-            $t \to 0$. Hence the heatmap explodes near the manifold at
-            low $t$.
+            is strictly positive, and the prefactor $|b'(t)/b(t)|$ grows
+            without bound as $t \to 0$. The two effects compound near the
+            manifold at small $t$, which is the regime in which the gap
+            visualized above is largest.
             """),
 
         "**3.  Why naïve learned-$\\alpha$ collapses (the flat-minimum argument)**":
             mo.md(r"""
-            The MSE objective with a free per-point $\alpha$ is
+            The MSE objective with a free per-point $\alpha$ is given by
 
             $$\mathcal{L}(\theta) = \mathbb{E}\big\|f_\theta(\mathbf{u}) - [\alpha_\theta\,\boldsymbol{\varepsilon} + (1 - \alpha_\theta)\,\mathbf{v}]\big\|^2.$$
 
-            The optimum is reached *for any* $\alpha$ as long as
-            $f_\theta(\mathbf{u})$ matches whichever target $\alpha$
-            specifies. The set of zero-loss configurations is a
-            $(\dim \alpha)$-parameter family. Adam's stochastic dynamics
-            select an arbitrary point on this flat ridge — usually
-            $\alpha \approx 1$, occasionally $\alpha \approx 0$ when a side
-            regularizer is added. Spatial variation in $\alpha$ requires a
-            *structural* anchor (e.g., MuLAN's variational ELBO) that
-            penalizes constant-$\alpha$ configurations directly. Plain MSE
-            cannot.
+            Its global optimum is reached for any value of $\alpha$ as
+            long as $f_\theta(\mathbf{u})$ matches whichever target
+            $\alpha$ specifies, so the set of zero-loss configurations
+            forms a flat ridge of dimension equal to the dimension of
+            $\alpha$. Stochastic dynamics select an arbitrary point on
+            the ridge, which in practice means $\alpha \approx 1$ for the
+            naive objective and $\alpha \approx 0$ when a side
+            regularizer is added. Recovering a usefully spatially varying
+            $\alpha$ requires a structural anchor that penalizes constant
+            $\alpha$ configurations directly, of which the variational
+            ELBO of MuLAN is one example, and which the MSE objective on
+            its own does not provide.
             """),
     })
     return
@@ -1194,42 +1292,60 @@ def _closer_md(mo):
     mo.md(r"""
     ## Onwards and Downwards
 
-    What we showed.
+    A number of related observations have come together in the course of
+    the preceding sections, and it may help to summarize the picture they
+    form before turning to what remains open.
 
-    - The optimal autonomous field on a finite dataset has a **closed
-      form** (Eq 35–36) — no training necessary. It decomposes into three
-      geometric pieces: a Natural Gradient toward the manifold, a Transport
-      Correction that vanishes with $D$, and a Linear Drift.
-    - The Natural Gradient term divides by zero at the manifold. The paper
-      proves a **conformal metric** $\overline{\lambda}(\mathbf{u})$
-      vanishes at exactly the right rate to keep the field bounded. We
-      rendered the cancellation directly.
-    - On the continuous $(\alpha, D)$ landscape, the velocity target wins
-      decisively at low $D$ and noise prediction has no regime where it
-      meaningfully beats velocity. The story holds across moons, GMMs, and
-      swiss rolls.
-    - The Jensen Gap explodes near the manifold at low $t$. That is *why*
-      noise prediction fails autonomously.
-    - Asking the network to *learn* its own $\alpha$ collapses three
-      different ways. Plain MSE is the wrong loss; structural priors are
-      required.
+    The optimal autonomous field on a finite dataset is available in
+    closed form, given by Eq 35–36 of the paper, so the analysis above
+    required no trained networks except for the empirical sweeps. The
+    closed-form field decomposes into three terms: a Natural Gradient
+    that points toward the manifold, a Transport Correction that vanishes
+    as the ambient dimension grows, and a Linear Drift that absorbs the
+    schedule's expanding noise volume. The Natural Gradient is
+    preconditioned by an effective gain that vanishes near the manifold
+    at the same rate the marginal-energy gradient diverges, and the
+    cancellation between the two is what makes the autonomous flow
+    well-defined despite an unbounded underlying potential. Sweeping the
+    parameterization $\alpha$ continuously, rather than treating velocity,
+    noise, and signal prediction as discrete options, reveals that the
+    velocity target wins clearly at low ambient dimension while noise
+    prediction has no regime in which it meaningfully outperforms
+    velocity. The pattern reproduces across moons, Gaussian mixtures, and
+    a swiss roll, and is therefore best understood as a property of the
+    geometry rather than of any specific dataset. The reason noise
+    prediction fails autonomously turns out to be the Jensen Gap of
+    Eq 66, which grows precisely near the manifold and at small $t$,
+    exactly the region where one would most want the field to be
+    accurate. Attempting finally to let the network choose its own
+    $\alpha$ per point does not recover the conformal-metric optimum,
+    because the MSE objective is degenerate in $\alpha$ and the
+    resulting loss landscape contains a flat ridge along which gradient
+    descent drifts to whichever endpoint the regularization happens to
+    favor.
 
-    What's left.
+    Several questions remain open. The whole analysis takes place in
+    $\mathbb{R}^D$, but a great deal of real data lives on curved
+    spaces, with proteins on rotation groups, phylogenies on tree
+    spaces, and lattice configurations on tori as standard examples,
+    and it is not obvious whether the conformal cancellation survives
+    intrinsic curvature or fractures in some way. Recovering a usefully
+    spatially varying $\alpha$ likely requires the variational
+    objective of MuLAN rather than a side regularizer added on top of
+    MSE, and a clean implementation of that objective in the present
+    setting would be informative. The conformal metric is one
+    Riemannian preconditioner that succeeds in canceling the manifold
+    singularity, but the question of whether it is the only such
+    preconditioner, or in any sense the optimal one, has not been
+    addressed here.
 
-    - **Curved ambient spaces.** Everything here lives in $\mathbb{R}^D$.
-      Real data often doesn't — protein conformations on rotation groups,
-      phylogenies on tree spaces, lattice configurations on tori. Whether
-      the conformal metric extends or fractures under intrinsic curvature
-      is the natural next question.
-    - **Variational learned-$\alpha$.** If we want spatial variation, we
-      probably need MuLAN's exact ELBO, not a side regularizer.
-    - **The right preconditioner.** The conformal metric is *one*
-      preconditioner that cancels the singularity. Is it the only one?
-      The optimal one?
-
-    Like the proverbial blind men feeling an elephant, autonomous diffusion
-    is more than the sum of its parameterizations. We hope the next
-    interpretation is yours.
+    On the strength of these results, autonomous diffusion is rather
+    more than a heuristic. It is a Riemannian gradient flow whose metric
+    is supplied by the data, and many of the engineering choices that
+    distinguish one parameterization from another can be understood as
+    questions about whether the relevant cancellation continues to hold.
+    The remaining cases, and the right way to extend the picture beyond
+    Euclidean ambient spaces, are open and worth pursuing.
 
     ---
 
@@ -1237,7 +1353,7 @@ def _closer_md(mo):
     [github.com/jacobcrainic/gon-notebook](https://github.com/jacobcrainic/gon-notebook).<br>
     *Paper:*
     [arXiv:2602.18428](https://arxiv.org/abs/2602.18428) ·
-    *Cite:* Sahraee-Ardakan, Delbracio, Milanfar — *The Geometry of Noise*, Google, Feb 2026.
+    *Cite:* Sahraee-Ardakan, Delbracio, Milanfar, *The Geometry of Noise*, Google, Feb 2026.
     """)
     return
 
