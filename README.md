@@ -38,4 +38,4 @@ uvx marimo edit walkthrough.py
 
 ## Credit
 
-Paper: Sahraee-Ardakan, Delbracio, Milanfar (Google, 2026). Notebook design borrows heavily from Gabriel Goh's *Why Momentum Really Works* (Distill, 2017).
+Paper: Sahraee-Ardakan, Delbracio, Milanfar (Google, 2026). 
