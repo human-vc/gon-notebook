@@ -483,36 +483,58 @@ def _conformal_md(mo):
     return
 
 @app.cell
-def _conformal_compute(G, X, t_grid):
-    XX_c, YY_c, lam_bar, grad_norm, _grad_field = G.conformal_grid(
-        X, t_grid, sched_fn=G.fm_schedule, lim=1.5, n=40
+def _conformal_compute(G, X, np, t_grid):
+    _idx = int(np.argmin(np.linalg.norm(X - np.array([0.9, 0.0]), axis=1)))
+    x_target = X[_idx].astype(np.float32)
+    direction = (x_target / np.linalg.norm(x_target)).astype(np.float32)
+    r_vals = np.geomspace(1e-3, 0.5, 200).astype(np.float32)
+    lam_bar, grad_norm = G.conformal_radial(
+        X, t_grid, x_target, direction, r_vals
     )
     product = lam_bar * grad_norm
-    return grad_norm, lam_bar, product
+    return grad_norm, lam_bar, product, r_vals, x_target
 
 @app.cell
-def _conformal_plot(STABLE, UNSTABLE, X, grad_norm, lam_bar, mo, np, plt, product):
+def _conformal_plot(
+    STABLE, UNSTABLE, grad_norm, lam_bar, mo, plt, product, r_vals,
+):
     def _draw():
-        fig, axes = plt.subplots(1, 3, figsize=(13.5, 4.5),
-                                  sharex=True, sharey=True, constrained_layout=True)
-        panels = [
-            (r"$\|\nabla E_{\mathrm{marg}}(\mathbf{u})\|$  —  diverges",
-                np.clip(grad_norm, 0, np.percentile(grad_norm, 99)),
-                "Oranges", UNSTABLE),
-            (r"$\overline{\lambda}(\mathbf{u})$  —  vanishes at the manifold",
-                lam_bar, "BuGn", STABLE),
-            (r"$\overline{\lambda}(\mathbf{u}) \cdot \|\nabla E_{\mathrm{marg}}\|$  —  bounded",
-                np.clip(product, 0, np.percentile(product, 99)),
-                "viridis", "#222222"),
-        ]
-        for ax, (title_, field_, cmap_, color_) in zip(axes, panels):
-            im = ax.imshow(field_, cmap=cmap_,
-                            extent=[-1.5, 1.5, -1.5, 1.5], origin="lower")
-            ax.scatter(X[:, 0], X[:, 1], s=4, c="#111111", alpha=0.7, zorder=5)
-            ax.set_title(title_, fontsize=10, color=color_)
-            ax.set_aspect("equal")
-            ax.set_xticks([]); ax.set_yticks([])
-            fig.colorbar(im, ax=ax, shrink=0.7, pad=0.02)
+        fig, ax = plt.subplots(figsize=(6.4, 3.6))
+
+        ax.plot(r_vals, grad_norm, color=UNSTABLE, lw=1.4, zorder=2)
+        ax.plot(r_vals, lam_bar,   color=STABLE,   lw=1.4, zorder=2)
+        ax.plot(r_vals, product,   color="#111",   lw=2.0, zorder=3)
+
+        ax.set_yscale("log")
+        ax.set_xlim(0.0, 0.5)
+        ax.set_ylim(1.0, 35.0)
+        ax.set_xticks([0.0, 0.1, 0.2, 0.3, 0.4, 0.5])
+        ax.set_xlabel(
+            r"distance $r$ from a data point on the manifold",
+            fontsize=10, labelpad=4,
+        )
+
+        x_lab = r_vals[-1] + 0.012
+        ax.text(x_lab, grad_norm[-1] * 0.93,
+                r"$\|\nabla E_{\mathrm{marg}}\|$",
+                color=UNSTABLE, fontsize=10, va="center", ha="left")
+        ax.text(x_lab, lam_bar[-1] * 1.07,
+                r"$\overline{\lambda}$",
+                color=STABLE, fontsize=10, va="center", ha="left")
+        ax.text(x_lab, product[-1],
+                r"$\overline{\lambda}\,\|\nabla E_{\mathrm{marg}}\|$",
+                color="#111", fontsize=10, va="center", ha="left")
+
+        for s in ("top", "right"):
+            ax.spines[s].set_visible(False)
+        for s in ("bottom", "left"):
+            ax.spines[s].set_linewidth(0.6)
+            ax.spines[s].set_color("#333")
+        ax.tick_params(direction="out", length=3, width=0.6,
+                        labelsize=9, colors="#333")
+        ax.minorticks_off()
+
+        fig.subplots_adjust(left=0.10, right=0.74, top=0.94, bottom=0.18)
         return fig
     mo.center(_draw())
     return
@@ -520,29 +542,33 @@ def _conformal_plot(STABLE, UNSTABLE, X, grad_norm, lam_bar, mo, np, plt, produc
 @app.cell
 def _conformal_caption(mo):
     mo.md(r"""
-    The three panels show, from left to right, the marginal-energy
-    gradient, the effective gain $\overline{\lambda}(\mathbf{u})$, and the
-    pointwise product of the two. The leftmost panel makes the divergence
-    visible: the gradient magnitude grows without bound at the dark data
-    points, so any method that follows it directly is unstable in
-    precisely the regions where one would most want it to be stable. The
-    middle panel shows the effective gain (Eq 15 of the paper), which
-    goes to zero at exactly the same locations. The asymptotic rates are
-    shown in Appendix E to match, and the rightmost panel confirms the
-    matching pictorially: the product of the two factors is finite
-    everywhere, no singularity remains, and the field is well-defined on
-    the entire domain.
+    The figure traces the three quantities along a single radial slice
+    that begins at a data point on the outer ring and runs outward away
+    from the manifold, with the horizontal axis recording the distance
+    $r$ from that point. The orange curve is the marginal-energy gradient
+    $\|\nabla E_{\mathrm{marg}}\|$, which peaks near the manifold and
+    falls off as $r$ grows. The teal curve is the effective gain
+    $\overline{\lambda}$ of Eq 15, which behaves the opposite way, taking
+    its smallest value near the manifold and growing as one moves away.
+    The black curve is the pointwise product of the two, and is what the
+    autonomous field actually uses. Despite either factor changing by a
+    factor of two or three across the slice, the product remains nearly
+    constant, hovering in a narrow band on the log scale. The asymptotic
+    rates are shown in Appendix E of the paper to match exactly, and the
+    figure makes that matching legible: where one factor would steer a
+    gradient method into instability, the other contracts at the right
+    rate to bring the product back to something finite.
 
-    The central claim of the paper is captured by this figure. The
+    The central claim of the paper is captured by this single curve. The
     Riemannian metric required to keep the gradient flow stable does not
     have to be designed or learned, since it is already present in the
-    conditional denoiser; the conformal cancellation is a property of the
-    geometry rather than of any particular network. The remaining
+    conditional denoiser, and the conformal cancellation is a property
+    of the geometry rather than of any particular network. The remaining
     sections work out the conditions under which the cancellation
     continues to hold and the conditions under which it begins to fail.
     The first such condition is dimensional, since the cancellation
-    depends on the posterior $p(t \mid \mathbf{u})$ and the shape of that
-    posterior changes substantially with the ambient dimension $D$.
+    depends on the posterior $p(t \mid \mathbf{u})$ and the shape of
+    that posterior changes substantially with the ambient dimension $D$.
     """)
     return
 
@@ -1073,10 +1099,11 @@ def _collapse_md(mo):
     One would expect the network to converge on a spatially varying
     $\alpha$, choosing values close to zero near the manifold, where
     noise prediction fails, and tolerating values close to one elsewhere,
-    where any parameterization works. The dropdown beneath the figure
-    selects between three actual training runs and one hypothetical
-    ideal, allowing the realized $\alpha(\mathbf{u}, t)$ field to be
-    inspected directly.
+    where any parameterization works. The figure that follows shows the
+    distribution of values $\alpha$ takes across the input space for
+    three different training schemes, alongside a hypothetical ideal in
+    which the network would have learned to vary $\alpha$ smoothly with
+    distance from the data.
     """)
     return
 
@@ -1098,83 +1125,57 @@ def _collapse_data(gon_data, np):
     return alpha_ideal, alpha_naive, alpha_nu, alpha_poly, coll_X
 
 @app.cell
-def _collapse_select(mo):
-
-    config_select = mo.ui.dropdown(
-        options=[
-            "naive MSE",
-            "ν(t)-regularized MSE",
-            "structural polynomial in t",
-            "hypothetical ideal (spatial variation)",
-        ],
-        value="naive MSE",
-        label="parameterization scheme",
-    )
-    return (config_select,)
-
-@app.cell
 def _collapse_plot(
-    ACCENT,
     STABLE,
-    UNSTABLE,
     alpha_ideal,
     alpha_naive,
     alpha_nu,
     alpha_poly,
-    coll_X,
-    config_select,
     mo,
+    np,
     plt,
 ):
     def _draw():
+        configs = [
+            ("Naive MSE",          alpha_naive),
+            (r"$\nu(t)$-regularized", alpha_nu),
+            ("Polynomial-in-$t$",  alpha_poly),
+            ("Ideal",              alpha_ideal),
+        ]
+        bins = np.linspace(0.0, 1.0, 41)
 
-        choice = config_select.value
-        if choice == "naive MSE":
-            A = alpha_naive; tag = "α ≈ 1 (noise prediction)"; tag_c = UNSTABLE
-        elif choice == "ν(t)-regularized MSE":
-            A = alpha_nu;    tag = "α ≈ 0 (velocity)";          tag_c = STABLE
-        elif choice == "structural polynomial in t":
-            A = alpha_poly;  tag = "α ≈ 1 (noise prediction)";  tag_c = UNSTABLE
-        else:
-            A = alpha_ideal
-            tag = "spans the full range";                       tag_c = ACCENT
+        fig, axes = plt.subplots(1, 4, figsize=(7.4, 2.0),
+                                  sharex=True, sharey=True)
 
-        fig, ax = plt.subplots(figsize=(8.2, 5.2),
-                                constrained_layout=True)
-        im = ax.imshow(A, cmap="RdBu_r", vmin=0.0, vmax=1.0,
-                        extent=[-1.5, 1.5, -1.5, 1.5], origin="lower")
+        n_total = alpha_naive.size
+        for ax, (name, A) in zip(axes, configs):
+            ax.hist(A.ravel(), bins=bins,
+                    color=STABLE, alpha=0.85,
+                    edgecolor="white", linewidth=0.4)
+            ax.set_title(name, fontsize=9.5, color="#111",
+                         pad=4, loc="left")
+            ax.text(0.97, 0.92,
+                    fr"$\bar{{\alpha}}={A.mean():.3f}$"
+                    "\n"
+                    fr"$\sigma={A.std():.3f}$",
+                    transform=ax.transAxes,
+                    ha="right", va="top",
+                    fontsize=8.5, color="#333")
+            ax.set_xticks([0.0, 0.5, 1.0])
+            ax.set_yticks([])
+            ax.set_ylim(0, n_total)
+            for s in ("top", "right", "left"):
+                ax.spines[s].set_visible(False)
+            ax.spines["bottom"].set_linewidth(0.6)
+            ax.spines["bottom"].set_color("#333")
+            ax.tick_params(direction="out", length=3, width=0.6,
+                           labelsize=8.5, colors="#333")
 
-        ax.scatter(coll_X[:, 0], coll_X[:, 1], s=14,
-                    facecolor="white", edgecolor="black",
-                    linewidths=0.8, alpha=0.5, zorder=5)
-        ax.set_aspect("equal")
-        ax.set_xlim(-1.5, 1.5); ax.set_ylim(-1.5, 1.5)
-        ax.set_xticks([]); ax.set_yticks([])
-        for s in ax.spines.values():
-            s.set_color("#000"); s.set_alpha(0.30); s.set_linewidth(0.8)
-
-        ax.text(0.02, 1.06,
-                f"{choice}",
-                transform=ax.transAxes, fontsize=12,
-                fontweight="bold", color="#222", ha="left", va="bottom")
-        ax.text(0.02, 1.01,
-                fr"$\bar{{\alpha}} = {A.mean():.3f}$  ·  "
-                fr"$\sigma_\alpha = {A.std():.3f}$  ·  {tag}",
-                transform=ax.transAxes, fontsize=10,
-                color=tag_c, ha="left", va="bottom")
-
-        cbar = fig.colorbar(im, ax=ax, shrink=0.8, pad=0.02,
-                             label=r"$\alpha(\mathbf{u}, t = 0.05)$  "
-                                   r"(0 = velocity, 1 = noise pred.)")
-        cbar.outline.set_visible(False)
+        fig.supxlabel(r"$\alpha$", fontsize=10, y=0.02)
+        fig.subplots_adjust(left=0.04, right=0.99, top=0.84,
+                             bottom=0.22, wspace=0.12)
         return fig
     mo.center(_draw())
-    return
-
-@app.cell
-def _collapse_select_display(config_select):
-
-    config_select
     return
 
 @app.cell

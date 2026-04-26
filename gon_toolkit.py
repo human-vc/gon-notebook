@@ -206,6 +206,35 @@ def conformal_grid(X, t_grid, sched_fn=fm_schedule, lim=1.5, n=40):
             grad_norm[j, i] = np.linalg.norm(gE)
     return XX, YY, lam_bar, grad_norm, grad_field
 
+def conformal_radial(X, t_grid, x_target, direction, r_vals,
+                     sched_fn=fm_schedule):
+    """Compute lam_bar(u) and grad_E_marg_norm(u) along u = x_target + r * direction."""
+    x_target = np.asarray(x_target, dtype=np.float32)
+    direction = np.asarray(direction, dtype=np.float32)
+    r_vals = np.asarray(r_vals, dtype=np.float32)
+    a = np.array([sched_fn(t)[0] for t in t_grid])
+    b = np.array([sched_fn(t)[1] for t in t_grid])
+    c = np.array([sched_fn(t)[2] for t in t_grid])
+    d = np.array([sched_fn(t)[3] for t in t_grid])
+    lam_t = (b / a) * (d * a - c * b)
+    R = len(r_vals)
+    lam_bar = np.zeros(R)
+    grad_norm = np.zeros(R)
+    for i in range(R):
+        u = (x_target + r_vals[i] * direction).astype(np.float32)
+        p_t_u = _posterior_t(u, X, t_grid, sched_fn)
+        lam_bar[i] = (p_t_u * lam_t).sum()
+        diff = u[None, None, :] - a[:, None, None] * X[None, :, :]
+        sq = (diff ** 2).sum(-1) / (2 * b[:, None] ** 2 + 1e-12)
+        log_w = -sq
+        log_w = log_w - log_w.max(axis=1, keepdims=True)
+        w = np.exp(log_w); w = w / w.sum(axis=1, keepdims=True)
+        D_star = w @ X
+        grad_E_t = (u[None, :] - a[:, None] * D_star) / (b[:, None] ** 2 + 1e-12)
+        gE = (p_t_u[:, None] * grad_E_t).sum(0)
+        grad_norm[i] = np.linalg.norm(gE)
+    return lam_bar, grad_norm
+
 def jensen_gap_grid(X, t_grid, sched_fn=fm_schedule, t_eval=0.05, lim=1.5, n=40):
     """Compute the noise-prediction Jensen Gap on a 2D grid (Eq 66):
 
