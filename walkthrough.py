@@ -178,6 +178,22 @@ def _hero_row(D_hero, mo, seed_hero):
     return
 
 @app.cell
+def _roadmap(mo):
+    mo.md(r"""
+    Four stops:
+
+    1. The optimal autonomous field on a finite dataset, written in closed
+       form.
+    2. A three-piece geometric decomposition, and the conformal
+       cancellation that keeps it bounded.
+    3. The continuous $(\alpha, D)$ phase plane that sharpens the paper's
+       binary table.
+    4. Where the cancellation breaks, and why letting the network learn
+       its own $\alpha$ collapses.
+    """)
+    return
+
+@app.cell
 def _popular_story(mo):
     mo.md(r"""
     The standard account of a diffusion model goes as follows. A network is
@@ -216,23 +232,26 @@ def _the_promise(mo):
     mo.md(r"""
     The recent paper *The Geometry of Noise* resolves the puzzle by
     recasting autonomous diffusion as Riemannian gradient flow on a
-    marginal energy landscape. The landscape itself is badly behaved: the
+    marginal energy landscape. The landscape is badly behaved: the
     energy diverges at the data manifold, so the gradient one would
-    naively follow grows without bound near a clean sample. The autonomous
-    field, however, carries an implicit local metric, which the paper
-    calls the effective gain, that contracts at the same rate the gradient
-    explodes, so that their product remains finite. The metric is supplied
-    by the geometry of the data rather than learned, which is the reason a
-    network with no time input is still able to behave reasonably across
-    noise levels.
+    naively follow grows without bound near a clean sample. The
+    autonomous field, however, carries an implicit local metric, which
+    the paper calls the effective gain, that contracts at the same rate
+    the gradient explodes. The product remains finite, and the metric
+    is supplied by the geometry of the data rather than learned.
+    """)
+    return
 
-    The remainder of this notebook works through the claim on the smallest
-    model that exhibits all of the relevant behavior: a finite collection
-    of points in two dimensions, optionally lifted into $\mathbb{R}^D$ by
-    a random orthogonal projection. The setting is rich enough to support
-    every parameterization the paper analyzes, and small enough that the
-    optimal field can be written down in closed form and every relevant
-    quantity plotted by hand.
+@app.cell
+def _the_promise_2(mo):
+    mo.md(r"""
+    The remainder of this notebook works through the claim on the
+    smallest model that exhibits all of the relevant behavior: a finite
+    collection of points in two dimensions, optionally lifted into
+    $\mathbb{R}^D$ by a random orthogonal projection. The setting is
+    rich enough to support every parameterization the paper analyzes,
+    and small enough that the optimal field can be written down in
+    closed form and every relevant quantity plotted by hand.
     """)
     return
 
@@ -432,28 +451,36 @@ def _decomp_plot(
 def _decomp_caption(mo):
     mo.md(r"""
     The three panels correspond to the three terms of the decomposition.
-    The Natural Gradient already accomplishes most of the work the field
-    does, since it points consistently toward the data from every position
-    in the plane. The Transport Correction adds a small rotational
-    adjustment that is largest in the gap between the rings, which is the
-    region where the posterior over noise levels is genuinely uncertain.
-    The Linear Drift contributes a radial term whose magnitude grows with
-    $\|\mathbf{u}\|$.
+    The Natural Gradient does most of the work, pointing consistently
+    toward the data from every position in the plane. The Transport
+    Correction adds a small rotational adjustment, largest in the gap
+    between the rings where the posterior over noise levels is genuinely
+    uncertain. The Linear Drift contributes a radial term that grows
+    with $\|\mathbf{u}\|$.
+    """)
+    return
 
-    Two regimes are identified in the paper in which the Transport
-    Correction vanishes. The first is high ambient dimension (Sec 5.2),
-    where the surface area of a Gaussian noise shell concentrates and the
-    posterior over noise levels collapses onto a narrow band of $t$. The
-    second is proximity to the manifold (Sec 5.3), where the same
-    posterior collapses for a different reason. In either regime the field
-    reduces to a preconditioned natural gradient, which is precisely the
-    form a Riemannian gradient flow would take.
+@app.cell
+def _decomp_caption_2(mo):
+    mo.md(r"""
+    The paper identifies two regimes in which the Transport Correction
+    vanishes. The first is high ambient dimension (Sec 5.2), where the
+    surface area of a Gaussian noise shell concentrates and the posterior
+    over noise levels collapses onto a narrow band of $t$. The second is
+    proximity to the manifold (Sec 5.3), where the same posterior
+    collapses for a different reason. In either regime the field reduces
+    to a preconditioned natural gradient, which is precisely the form a
+    Riemannian gradient flow would take.
+    """)
+    return
 
-    One question, however, remains. The marginal-energy gradient
-    $\nabla E_{\mathrm{marg}}$ is unbounded near the manifold, since the
-    energy itself diverges there, and yet the autonomous field is finite
-    everywhere. The next section explains how the cancellation that keeps
-    the field bounded actually works.
+@app.cell
+def _decomp_caption_3(mo):
+    mo.md(r"""
+    One question remains. The marginal-energy gradient
+    $\nabla E_{\mathrm{marg}}$ is unbounded near the manifold, since
+    the energy itself diverges there, and yet the autonomous field is
+    finite everywhere. How?
     """)
     return
 
@@ -546,36 +573,44 @@ def _conformal_caption(mo):
     that begins at a data point on the outer ring and runs outward away
     from the manifold, with the horizontal axis recording the distance
     $r$ from that point. The orange curve is the marginal-energy gradient
-    $\|\nabla E_{\mathrm{marg}}\|$, which peaks near the manifold and
-    falls off as $r$ grows. The teal curve is the effective gain
-    $\overline{\lambda}$ of Eq 15, which behaves the opposite way, taking
-    its smallest value near the manifold and growing as one moves away.
+    $\|\nabla E_{\mathrm{marg}}\|$, peaking near the manifold and falling
+    off as $r$ grows. The teal curve is the effective gain
+    $\overline{\lambda}$ of Eq 15, which moves the opposite way.
+    """)
+    return
+
+@app.cell
+def _conformal_caption_2(mo):
+    mo.md(r"""
     The black curve is the pointwise product of the two, and is what the
     autonomous field actually uses. Despite either factor changing by a
-    factor of two or three across the slice, the product remains nearly
-    constant, hovering in a narrow band on the log scale. The asymptotic
-    rates are shown in Appendix E of the paper to match exactly, and the
-    figure makes that matching legible: where one factor would steer a
-    gradient method into instability, the other contracts at the right
-    rate to bring the product back to something finite.
+    factor of two or three across the slice, the product hovers in a
+    narrow band on the log scale. Appendix E of the paper proves the
+    asymptotic rates match exactly, and the figure makes the matching
+    legible: where one factor would push a gradient method into
+    instability, the other contracts at the right rate to bring the
+    product back to something finite.
+    """)
+    return
 
+@app.cell
+def _conformal_caption_3(mo):
+    mo.md(r"""
     The central claim of the paper is captured by this single curve. The
     Riemannian metric required to keep the gradient flow stable does not
     have to be designed or learned, since it is already present in the
     conditional denoiser, and the conformal cancellation is a property
     of the geometry rather than of any particular network. The remaining
-    sections work out the conditions under which the cancellation
-    continues to hold and the conditions under which it begins to fail.
-    The first such condition is dimensional, since the cancellation
-    depends on the posterior $p(t \mid \mathbf{u})$ and the shape of
-    that posterior changes substantially with the ambient dimension $D$.
+    sections work out the conditions under which the cancellation holds
+    and the conditions under which it begins to fail. The first such
+    condition is dimensional.
     """)
     return
 
 @app.cell
 def _field_D_md(mo):
     mo.md(r"""
-    ## The Field Across Ambient Dimensions
+    ## A Blessing of Dimensions
 
     The conformal-metric argument has a free parameter, namely the ambient
     dimension into which the data is embedded. Lemma 5 of the paper
@@ -659,34 +694,43 @@ def _field_D_caption(mo):
 @app.cell
 def _alpha_md(mo):
     mo.md(r"""
-    ## A Continuous Family of Parameterizations
+    ## The Velocity-Noise Knob
 
     Up to this point every figure has been computed for the velocity
-    target $\mathbf{v} = \boldsymbol{\varepsilon} - \mathbf{x}$. The paper
-    considers three particular targets in detail, namely noise prediction,
-    velocity, and signal prediction, and classifies each according to
-    whether its gain and drift terms are bounded and whether the
-    resulting flow is stable. There is no reason, however, to restrict
-    attention to those three points, and a continuous family interpolating
-    between two of them can be defined as
+    target $\mathbf{v} = \boldsymbol{\varepsilon} - \mathbf{x}$. The
+    paper considers three targets — noise prediction, velocity, and
+    signal prediction — and classifies each according to whether its
+    gain and drift terms are bounded and whether the resulting flow is
+    stable. There is no reason to restrict attention to those three
+    points.
+    """)
+    return
+
+@app.cell
+def _alpha_md_2(mo):
+    mo.md(r"""
+    A continuous family between two of them can be defined as
 
     $$\text{target}(\alpha) = \alpha\,\boldsymbol{\varepsilon} + (1 - \alpha)\,\mathbf{v}, \qquad \alpha \in [0, 1],$$
 
     with $\alpha = 0$ recovering velocity prediction and $\alpha = 1$
-    recovering noise prediction. Sweeping $\alpha$ continuously turns the
-    binary classification of the paper into a smoothly varying landscape
-    on which one can ask not only which targets work but how the quality
-    of the resulting flow varies between them.
+    recovering noise prediction. Sweeping $\alpha$ continuously turns
+    the binary classification of the paper into a smoothly varying
+    landscape on which one can ask not only which targets work but how
+    the quality varies between them.
+    """)
+    return
 
-    To populate this landscape, a small MLP was trained at every cell of
+@app.cell
+def _alpha_md_3(mo):
+    mo.md(r"""
+    To populate the landscape, a small MLP was trained at every cell of
     the grid $\alpha \in \{0, 0.25, 0.5, 0.75, 1\}$ paired with
-    $D \in \{2, 4, 8, 16, 32, 64\}$. Each network was trained on the same
-    dataset of two concentric rings, samples were drawn from each by
-    Euler integration of the ODE, and the sliced Wasserstein-2 distance
-    from the samples to a fresh ground-truth set was recorded. Every cell
-    of the heatmap below is the output of one such trained network, and
-    the slider beneath it allows the row corresponding to a specific
-    ambient dimension to be highlighted on the right-hand panel.
+    $D \in \{2, 4, 8, 16, 32, 64\}$. Each network was trained on the
+    same dataset of two concentric rings, samples drawn by Euler
+    integration of the ODE, and the sliced Wasserstein-2 distance from
+    the samples to a fresh ground-truth set recorded. Every cell of the
+    heatmap below is the output of one such trained network.
     """)
     return
 
@@ -886,33 +930,39 @@ def _phase_slider_display(D_select):
 @app.cell
 def _phase_caption(mo):
     mo.md(r"""
-    The horizontal axis sweeps the parameter $\alpha$ from velocity
-    prediction on the left to noise prediction on the right, the vertical
-    axis is the ambient dimension on a log scale, and the color encodes
-    the sliced Wasserstein-2 distance from the trained model's samples to
-    the ground-truth set, with lighter shades indicating better fits.
-    Dragging the slider selects a row of the heatmap, which is reproduced
-    as a line plot on the right with the chosen dimension highlighted.
-    Four particular configurations, marked A through D, are reproduced as
-    scatter plots at the bottom so that the same data can be inspected
-    directly.
+    The horizontal axis sweeps $\alpha$ from velocity on the left to
+    noise prediction on the right; the vertical axis is the ambient
+    dimension on a log scale; color encodes the sliced Wasserstein-2
+    distance to the ground truth, lighter being better. Dragging the
+    slider selects a row, reproduced as a line plot on the right with
+    the chosen dimension highlighted. Four particular configurations,
+    marked A through D, sit as scatter plots at the bottom.
+    """)
+    return
 
-    The qualitative shape of the landscape is straightforward. At
-    $D = 2$, configuration A (velocity) recovers the rings tightly with
-    $W_2 \approx 0.10$, while configuration B (noise prediction) collapses
-    to a diffuse cloud at $W_2 \approx 0.20$, roughly twice as far from
-    the ground truth despite identical compute and identical data. At
-    $D = 32$, both configurations C and D succeed, since at high enough
-    dimension the posterior over noise levels concentrates and the
-    distinction between targets disappears. The heatmap interpolates
-    smoothly between these regimes, sharpening the binary statement of
-    the paper into a quantitative one: noise prediction does not fail
-    uniformly but rather fails most acutely at low ambient dimension,
-    with the gap between targets closing gradually as $D$ rises. The
-    picture that emerges is one in which the conformal cancellation
-    operates wherever the geometry permits it, and the parameterization
-    choice matters only to the extent that the cancellation has not yet
-    completed.
+@app.cell
+def _phase_caption_2(mo):
+    mo.md(r"""
+    At $D = 2$, configuration A (velocity) recovers the rings tightly
+    with $W_2 \approx 0.10$, while configuration B (noise prediction)
+    collapses to a diffuse cloud at $W_2 \approx 0.20$, roughly twice as
+    far from the ground truth despite identical compute and identical
+    data. At $D = 32$, both C and D succeed, since the posterior over
+    noise levels concentrates and the distinction between targets
+    disappears.
+    """)
+    return
+
+@app.cell
+def _phase_caption_3(mo):
+    mo.md(r"""
+    The heatmap interpolates smoothly between these regimes, sharpening
+    the binary statement of the paper into a quantitative one: noise
+    prediction fails most acutely at low ambient dimension, and the gap
+    between targets closes gradually as $D$ rises. The conformal
+    cancellation operates wherever the geometry permits it, and the
+    parameterization choice matters only to the extent that the
+    cancellation has not yet completed.
     """)
     return
 
@@ -1358,10 +1408,12 @@ def _closer_md(mo):
     ---
 
     *Code:*
-    [github.com/jacobcrainic/gon-notebook](https://github.com/jacobcrainic/gon-notebook).<br>
+    [github.com/human-vc/gon-notebook](https://github.com/human-vc/gon-notebook).<br>
     *Paper:*
     [arXiv:2602.18428](https://arxiv.org/abs/2602.18428) ·
     *Cite:* Sahraee-Ardakan, Delbracio, Milanfar, *The Geometry of Noise*, Google, Feb 2026.
+
+    *— Jacob Crainic, alphaXiv × marimo, April 2026.*
     """)
     return
 
