@@ -698,7 +698,6 @@ def _phase_slider(D_phase, mo):
 
 @app.cell
 def _phase_plot(
-    ACCENT,
     D_phase,
     D_select,
     STABLE,
@@ -737,16 +736,6 @@ def _phase_plot(
         ax.set_yticklabels([2, 4, 8, 16, 32])
         ax.set_xticks([0.0, 0.25, 0.5, 0.75, 1.0])
         ax.set_xlim(0, 1); ax.set_ylim(np.log2(2), np.log2(32))
-
-        sticker = dict(boxstyle="round,pad=0.32",
-                        facecolor="white", edgecolor="none", alpha=0.78)
-        ax.text(0.50, np.log2(22),
-                "concentration regime\n(parameterization barely matters)",
-                fontsize=9, color="#333", style="italic",
-                ha="center", va="center", bbox=sticker, zorder=6)
-        ax.text(0.50, np.log2(2.5), "low-$D$ ambiguity",
-                fontsize=8.5, color=ACCENT,
-                ha="center", va="center", bbox=sticker, zorder=6)
 
         ORANGE = "#FF6C00"
         y_pick = np.log2(D_phase[D_idx].astype(float))
