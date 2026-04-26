@@ -17,7 +17,7 @@ import marimo
 __generated_with = "0.23.3"
 app = marimo.App(width="medium")
 
-@app.cell(hide_code=True)
+@app.cell
 def _imports():
     import marimo as mo
     import numpy as np
@@ -27,7 +27,7 @@ def _imports():
 
     return G, gon_data, mo, np, plt
 
-@app.cell(hide_code=True)
+@app.cell
 def _palette():
 
     STABLE = "#1B9E77"
@@ -37,7 +37,7 @@ def _palette():
     MUTED = "#9B9B9B"
     return ACCENT, STABLE, UNSTABLE
 
-@app.cell(hide_code=True)
+@app.cell
 def _rcparams(plt):
 
     plt.rcParams.update({
@@ -59,7 +59,7 @@ def _rcparams(plt):
     })
     return
 
-@app.cell(hide_code=True)
+@app.cell
 def _title(mo):
     mo.md(r"""
     <div style="text-align:center; padding-top:0.5rem;">
@@ -72,13 +72,13 @@ def _title(mo):
     """)
     return
 
-@app.cell(hide_code=True)
+@app.cell
 def _hero_data(G, np):
     X_hero = G.make_circles(n=120, seed=0)
     t_grid_hero = np.linspace(0.05, 0.95, 16)
     return X_hero, t_grid_hero
 
-@app.cell(hide_code=True)
+@app.cell
 def _hero_controls(mo):
 
     D_hero = mo.ui.slider(
@@ -92,7 +92,7 @@ def _hero_controls(mo):
     )
     return D_hero, seed_hero
 
-@app.cell(hide_code=True)
+@app.cell
 def _hero_field(D_hero, G, X_hero, np, seed_hero, t_grid_hero):
     rng = np.random.default_rng(int(seed_hero.value))
     M = rng.standard_normal((D_hero.value, 2)).astype(np.float32)
@@ -111,7 +111,7 @@ def _hero_field(D_hero, G, X_hero, np, seed_hero, t_grid_hero):
             UV_h[j, i] = (P.T @ f_D) if D_hero.value != 2 else f_D
     return UV_h, XX_h, YY_h
 
-@app.cell(hide_code=True)
+@app.cell
 def _hero_plot(STABLE, UV_h, XX_h, X_hero, YY_h, np, plt):
     def _draw():
 
@@ -136,7 +136,7 @@ def _hero_plot(STABLE, UV_h, XX_h, X_hero, YY_h, np, plt):
     _draw()
     return
 
-@app.cell(hide_code=True)
+@app.cell
 def _hero_row(D_hero, mo, seed_hero):
 
     col_slider1 = mo.vstack([
@@ -170,7 +170,7 @@ def _hero_row(D_hero, mo, seed_hero):
                 justify="space-between", gap=2.0, align="start")
     return
 
-@app.cell(hide_code=True)
+@app.cell
 def _popular_story(mo):
     mo.md(r"""
     Here's the popular story about diffusion. A network learns to denoise data
@@ -183,7 +183,7 @@ def _popular_story(mo):
     """)
     return
 
-@app.cell(hide_code=True)
+@app.cell
 def _the_break(mo):
     mo.md(r"""
     **Recent autonomous models throw away the time conditioning entirely.** No
@@ -200,7 +200,7 @@ def _the_break(mo):
     """)
     return
 
-@app.cell(hide_code=True)
+@app.cell
 def _the_promise(mo):
     mo.md(r"""
     *The Geometry of Noise* resolves the paradox geometrically. The
@@ -219,7 +219,7 @@ def _the_promise(mo):
     """)
     return
 
-@app.cell(hide_code=True)
+@app.cell
 def _first_steps_md(mo):
     mo.md(r"""
     ## First Steps: The Closed-Form Optimal Field
@@ -241,7 +241,7 @@ def _first_steps_md(mo):
     """)
     return
 
-@app.cell(hide_code=True)
+@app.cell
 def _table1(mo):
     mo.md(r"""
     | Model | $a(t)$ | $b(t)$ | $c(t)$ | $d(t)$ | What it predicts |
@@ -262,7 +262,7 @@ def _table1(mo):
     """)
     return
 
-@app.cell(hide_code=True)
+@app.cell
 def _trick_md(mo):
     mo.md(r"""
     Here's the trick that makes everything visualizable. When the data is a
@@ -279,14 +279,14 @@ def _trick_md(mo):
     """)
     return
 
-@app.cell(hide_code=True)
+@app.cell
 def _closed_form_field(G, np):
     X = G.make_circles(n=120, seed=0)
     t_grid = np.linspace(0.05, 0.95, 18)
     XX_cf, YY_cf, field_cf = G.field_grid(X, t_grid, sched_fn=G.fm_schedule, lim=1.4, n=22)
     return X, XX_cf, YY_cf, field_cf, t_grid
 
-@app.cell(hide_code=True)
+@app.cell
 def _closed_form_plot(STABLE, X, XX_cf, YY_cf, field_cf, np, plt):
     def _draw():
         fig, ax = plt.subplots(figsize=(5.4, 5.4), constrained_layout=True)
@@ -305,7 +305,7 @@ def _closed_form_plot(STABLE, X, XX_cf, YY_cf, field_cf, np, plt):
     _draw()
     return
 
-@app.cell(hide_code=True)
+@app.cell
 def _closed_form_caption(mo):
     mo.md(r"""
     **The optimal autonomous field $f^*(\mathbf{u})$ on a 2D dataset of 120
@@ -319,7 +319,7 @@ def _closed_form_caption(mo):
     """)
     return
 
-@app.cell(hide_code=True)
+@app.cell
 def _decomp_md(mo):
     mo.md(r"""
     ## Decomposing the Field
@@ -330,7 +330,7 @@ def _decomp_md(mo):
     """)
     return
 
-@app.cell(hide_code=True)
+@app.cell
 def _decomp_equation(mo):
 
     mo.md(r"""
@@ -349,14 +349,14 @@ def _decomp_equation(mo):
     """)
     return
 
-@app.cell(hide_code=True)
+@app.cell
 def _decomp_compute(G, X, t_grid):
     XX_d, YY_d, natural, transport, drift = G.decompose_field_grid(
         X, t_grid, sched_fn=G.fm_schedule, lim=1.4, n=18
     )
     return XX_d, YY_d, drift, natural, transport
 
-@app.cell(hide_code=True)
+@app.cell
 def _decomp_plot(
     ACCENT,
     STABLE,
@@ -395,7 +395,7 @@ def _decomp_plot(
     _draw()
     return
 
-@app.cell(hide_code=True)
+@app.cell
 def _decomp_caption(mo):
     mo.md(r"""
     Each color matches the equation above. Notice the
@@ -419,7 +419,7 @@ def _decomp_caption(mo):
     """)
     return
 
-@app.cell(hide_code=True)
+@app.cell
 def _conformal_md(mo):
     mo.md(r"""
     ## The Conformal Metric
@@ -443,7 +443,7 @@ def _conformal_md(mo):
     """)
     return
 
-@app.cell(hide_code=True)
+@app.cell
 def _conformal_compute(G, X, t_grid):
     XX_c, YY_c, lam_bar, grad_norm, _grad_field = G.conformal_grid(
         X, t_grid, sched_fn=G.fm_schedule, lim=1.5, n=40
@@ -451,7 +451,7 @@ def _conformal_compute(G, X, t_grid):
     product = lam_bar * grad_norm
     return grad_norm, lam_bar, product
 
-@app.cell(hide_code=True)
+@app.cell
 def _conformal_plot(STABLE, UNSTABLE, X, grad_norm, lam_bar, np, plt, product):
     def _draw():
         fig, axes = plt.subplots(1, 3, figsize=(13.5, 4.5),
@@ -478,7 +478,7 @@ def _conformal_plot(STABLE, UNSTABLE, X, grad_norm, lam_bar, np, plt, product):
     _draw()
     return
 
-@app.cell(hide_code=True)
+@app.cell
 def _conformal_caption(mo):
     mo.md(r"""
     Read these three panels left-to-right.
@@ -505,7 +505,7 @@ def _conformal_caption(mo):
     """)
     return
 
-@app.cell(hide_code=True)
+@app.cell
 def _field_D_md(mo):
     mo.md(r"""
     ## Example: The Field Across Ambient Dimensions
@@ -522,7 +522,7 @@ def _field_D_md(mo):
     """)
     return
 
-@app.cell(hide_code=True)
+@app.cell
 def _field_D_data(G, X, np, t_grid):
     D_panel_values = [2, 8, 32, 128]
     panel_results = []
@@ -544,7 +544,7 @@ def _field_D_data(G, X, np, t_grid):
         panel_results.append((D_val, XX_p, YY_p, UV_p))
     return (panel_results,)
 
-@app.cell(hide_code=True)
+@app.cell
 def _field_D_plot(STABLE, X, np, panel_results, plt):
     def _draw():
         fig, axes = plt.subplots(1, 4, figsize=(15, 4),
@@ -566,7 +566,7 @@ def _field_D_plot(STABLE, X, np, panel_results, plt):
     _draw()
     return
 
-@app.cell(hide_code=True)
+@app.cell
 def _field_D_caption(mo):
     mo.md(r"""
     Read left to right. At $D=2$ the field is messy near the manifold —
@@ -580,7 +580,7 @@ def _field_D_caption(mo):
     """)
     return
 
-@app.cell(hide_code=True)
+@app.cell
 def _alpha_md(mo):
     mo.md(r"""
     ## A Continuous Family of Parameterizations
@@ -606,7 +606,7 @@ def _alpha_md(mo):
     """)
     return
 
-@app.cell(hide_code=True)
+@app.cell
 def _phase_load(gon_data, np):
     _phase = gon_data.load("exp13_iconic")
 
@@ -630,7 +630,7 @@ def _phase_load(gon_data, np):
     }
     return D_phase, W2_phase, alpha_phase, corner_scatters, corner_w2, truth_2d
 
-@app.cell(hide_code=True)
+@app.cell
 def _phase_slider(D_phase, mo):
 
     D_select = mo.ui.slider(
@@ -641,7 +641,7 @@ def _phase_slider(D_phase, mo):
     )
     return (D_select,)
 
-@app.cell(hide_code=True)
+@app.cell
 def _phase_plot(
     ACCENT,
     D_phase,
@@ -802,13 +802,13 @@ def _phase_plot(
     _draw()
     return
 
-@app.cell(hide_code=True)
+@app.cell
 def _phase_slider_display(D_select):
 
     D_select
     return
 
-@app.cell(hide_code=True)
+@app.cell
 def _phase_caption(mo):
     mo.md(r"""
     Read it like a weather map. **Lighter colors are better** (lower $W_2$
@@ -837,7 +837,7 @@ def _phase_caption(mo):
     """)
     return
 
-@app.cell(hide_code=True)
+@app.cell
 def _jensen_md(mo):
     mo.md(r"""
     ## The Limits of the Cancellation
@@ -861,7 +861,7 @@ def _jensen_md(mo):
     """)
     return
 
-@app.cell(hide_code=True)
+@app.cell
 def _jensen_compute(G, X, np):
     t_grid_j = np.linspace(0.02, 0.95, 22)
     jensen_panels = []
@@ -873,7 +873,7 @@ def _jensen_compute(G, X, np):
         jensen_panels.append((t_e, XXj, YYj, gap_j))
     return (jensen_panels,)
 
-@app.cell(hide_code=True)
+@app.cell
 def _jensen_plot(X, jensen_panels, np, plt):
     def _draw():
         vmax_j = max(np.percentile(g, 98) for _, _, _, g in jensen_panels)
@@ -894,7 +894,7 @@ def _jensen_plot(X, jensen_panels, np, plt):
     _draw()
     return
 
-@app.cell(hide_code=True)
+@app.cell
 def _jensen_caption(mo):
     mo.md(r"""
     At $t = 0.60$, with comfortably high noise, the Jensen Gap is small
@@ -908,7 +908,7 @@ def _jensen_caption(mo):
     """)
     return
 
-@app.cell(hide_code=True)
+@app.cell
 def _gallery_md(mo):
     mo.md(r"""
     ## Example: Moons, Mixtures, and a Swiss Roll
@@ -925,7 +925,7 @@ def _gallery_md(mo):
     """)
     return
 
-@app.cell(hide_code=True)
+@app.cell
 def _gallery_load(gon_data, np):
     _gal = gon_data.load("exp12_failure_grids")
     grids_gal = {
@@ -937,7 +937,7 @@ def _gallery_load(gon_data, np):
     D_gal = _gal["D_vals"]
     return D_gal, alpha_gal, grids_gal
 
-@app.cell(hide_code=True)
+@app.cell
 def _gallery_plot(D_gal, alpha_gal, grids_gal, plt):
     def _draw():
 
@@ -976,7 +976,7 @@ def _gallery_plot(D_gal, alpha_gal, grids_gal, plt):
     _draw()
     return
 
-@app.cell(hide_code=True)
+@app.cell
 def _gallery_caption(mo):
     mo.md(r"""
     The same shape in all three. At $D = 2$, velocity beats noise prediction
@@ -989,7 +989,7 @@ def _gallery_caption(mo):
     """)
     return
 
-@app.cell(hide_code=True)
+@app.cell
 def _collapse_md(mo):
     mo.md(r"""
     ## There's One More Question Worth Asking
@@ -1006,7 +1006,7 @@ def _collapse_md(mo):
     """)
     return
 
-@app.cell(hide_code=True)
+@app.cell
 def _collapse_data(gon_data, np):
     _coll = gon_data.load("exp14_alpha_fields")
     alpha_naive = _coll["alpha_naive"]
@@ -1023,7 +1023,7 @@ def _collapse_data(gon_data, np):
     alpha_ideal = (0.85 * np.exp(-_dist / 0.18)).astype(np.float32)
     return alpha_ideal, alpha_naive, alpha_nu, alpha_poly, coll_X
 
-@app.cell(hide_code=True)
+@app.cell
 def _collapse_select(mo):
 
     config_select = mo.ui.dropdown(
@@ -1038,7 +1038,7 @@ def _collapse_select(mo):
     )
     return (config_select,)
 
-@app.cell(hide_code=True)
+@app.cell
 def _collapse_plot(
     ACCENT,
     STABLE,
@@ -1096,13 +1096,13 @@ def _collapse_plot(
     _draw()
     return
 
-@app.cell(hide_code=True)
+@app.cell
 def _collapse_select_display(config_select):
 
     config_select
     return
 
-@app.cell(hide_code=True)
+@app.cell
 def _collapse_caption(mo):
     mo.md(r"""
     All three configurations **collapse** to a constant $\alpha$ across the
@@ -1130,7 +1130,7 @@ def _collapse_caption(mo):
     """)
     return
 
-@app.cell(hide_code=True)
+@app.cell
 def _footnotes(mo):
     mo.md(r"""
     ---
@@ -1189,7 +1189,7 @@ def _footnotes(mo):
     })
     return
 
-@app.cell(hide_code=True)
+@app.cell
 def _closer_md(mo):
     mo.md(r"""
     ## Onwards and Downwards
