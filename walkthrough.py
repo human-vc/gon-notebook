@@ -159,15 +159,18 @@ def _hero_row(D_hero, mo, seed_hero):
     ], gap=0.3)
     col_prose = mo.md(
         r"""
-        The standard view of a diffusion model is that the network needs to
-        know how much noise has been added before it can decide which way
-        to point. Recent autonomous models drop that information entirely:
-        the network sees only the noisy observation and produces a single
-        static vector field, and yet samples drawn through that field
-        arrive at the clean data. The figure shows one such field on a 2D
-        dataset of two interleaving rings, lifted into $\mathbb{R}^D$ by a
-        random orthogonal projection. Vary the dimension below to see how
-        the field responds.
+        The standard view of a diffusion model is that the network needs
+        to know how much noise has been added before it can decide which
+        way to point. Recent autonomous models drop that information
+        entirely: the network sees only the noisy observation and produces
+        a single static vector field, and yet samples drawn through that
+        field arrive at the clean data. How a single static arrow at every
+        location can guide a sample from pure noise and also from light
+        noise, while ensuring its stationary points sit on the data, is
+        the question this notebook is about. The figure shows one such
+        field on a 2D dataset of two interleaving rings, lifted into
+        $\mathbb{R}^D$ by a random orthogonal projection; varying the
+        dimension below changes how the field responds.
         """
     )
     mo.hstack([col_slider1, col_slider2, col_prose],
@@ -894,7 +897,11 @@ def _phase_caption(mo):
     smoothly between these regimes, sharpening the binary statement of
     the paper into a quantitative one: noise prediction does not fail
     uniformly but rather fails most acutely at low ambient dimension,
-    with the gap between targets closing gradually as $D$ rises.
+    with the gap between targets closing gradually as $D$ rises. The
+    picture that emerges is one in which the conformal cancellation
+    operates wherever the geometry permits it, and the parameterization
+    choice matters only to the extent that the cancellation has not yet
+    completed.
     """)
     return
 
@@ -1056,11 +1063,10 @@ def _gallery_caption(mo):
     as any other once the posterior over noise levels has concentrated.
     The swiss roll exhibits the steepest dependence on $\alpha$,
     consistent with the curvature argument in the paper: a manifold with
-    non-trivial curvature breaks the posterior concentration earlier than
-    a flat one. Across all three datasets the conformal-metric account is
-    reproduced, and the cancellation, where it works, is shown to be a
-    consequence of geometry rather than of any specific feature of the
-    concentric-rings dataset.
+    non-trivial curvature breaks the posterior concentration earlier
+    than a flat one. The conformal-metric account is therefore reproduced
+    across all three datasets, and what one is seeing is a story about
+    geometry rather than a property of concentric circles.
     """)
     return
 
@@ -1218,9 +1224,12 @@ def _collapse_caption(mo):
     optimum from this loss landscape requires a structural anchor that
     MSE alone cannot supply. The variational ELBO of MuLAN supplies one,
     while a $\nu(t)$ regularizer added on top of MSE does not. The
-    conclusion is that the optimum exists in the function space available
-    to the network, but the loss landscape on which gradient descent has
-    been asked to find it does not select for it.
+    conclusion is that the conformal-metric optimum exists in the
+    function space available to the network, but the loss landscape on
+    which gradient descent has been asked to find it does not select for
+    it; the configuration is, in this sense, a trap laid by the loss
+    landscape itself, and one that no amount of additional optimization
+    will undo without a structurally different objective.
     """)
     return
 
@@ -1346,6 +1355,27 @@ def _closer_md(mo):
     questions about whether the relevant cancellation continues to hold.
     The remaining cases, and the right way to extend the picture beyond
     Euclidean ambient spaces, are open and worth pursuing.
+
+    The picture in five lines, for the reader who has scrolled to the
+    end:
+
+    1. The optimal autonomous field on a finite dataset has a closed form
+       (Eq 35–36) and admits a three-term geometric decomposition.
+    2. A conformal metric vanishes at the manifold at exactly the rate
+       $\nabla E_{\mathrm{marg}}$ diverges, which is what keeps the
+       autonomous flow well-defined.
+    3. Sweeping $\alpha$ continuously shows that velocity prediction
+       wins at low $D$ and noise prediction has no regime in which it
+       meaningfully wins.
+    4. The Jensen Gap of Eq 66 grows precisely near the manifold at
+       small $t$, which is why noise prediction fails autonomously.
+    5. Letting the network learn its own $\alpha$ collapses three
+       different ways, because the MSE objective is degenerate in
+       $\alpha$ and selects no spatial structure.
+
+    The open questions, by the same accounting: curved ambient spaces,
+    a clean variational learned-$\alpha$, and whether the conformal
+    metric is the only Riemannian preconditioner that does the job.
 
     ---
 
