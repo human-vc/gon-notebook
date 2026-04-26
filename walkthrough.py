@@ -23,8 +23,9 @@ def _imports():
     import numpy as np
     import matplotlib.pyplot as plt
     import gon_toolkit as G
+    import gon_data
 
-    return G, mo, np, plt
+    return G, gon_data, mo, np, plt
 
 @app.cell
 def _palette():
@@ -606,8 +607,8 @@ def _alpha_md(mo):
     return
 
 @app.cell
-def _phase_load(np):
-    _phase = np.load("exp13_iconic.npz")
+def _phase_load(gon_data, np):
+    _phase = gon_data.load("exp13_iconic")
 
     _D_full = _phase["D_dense"]
     _keep = _D_full <= 32
@@ -925,8 +926,8 @@ def _gallery_md(mo):
     return
 
 @app.cell
-def _gallery_load(np):
-    _gal = np.load("exp12_failure_grids.npz")
+def _gallery_load(gon_data, np):
+    _gal = gon_data.load("exp12_failure_grids")
     grids_gal = {
         "moons":      _gal["moons"],
         "8-GMM ring": _gal["8-GMM ring"],
@@ -1006,8 +1007,8 @@ def _collapse_md(mo):
     return
 
 @app.cell
-def _collapse_data(np):
-    _coll = np.load("exp14_alpha_fields.npz")
+def _collapse_data(gon_data, np):
+    _coll = gon_data.load("exp14_alpha_fields")
     alpha_naive = _coll["alpha_naive"]
     alpha_nu = _coll["alpha_nu"]
     alpha_poly = _coll["alpha_poly"]
